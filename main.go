@@ -16,15 +16,6 @@ import (
 // 글로벌 변수 : 모든 피어의 연결 정보 저장하는 리스트
 var connectedPeers []net.Conn
 
-// const (
-// 	Ping        = 0x01
-// 	Pong        = 0x02
-// 	FindNode    = 0x03
-// 	Neighbors   = 0x04
-// 	ENRRequest  = 0x05
-// 	ENRResponse = 0x06
-// )
-
 func main() {
 	// 명령줄
 	mode := flag.String("mode", "fullNode", "Start in 'Bootstrap Node' or 'FullNode' ")

@@ -11,10 +11,12 @@ import (
 
 // 메시지 타입 상수 정의
 const (
-	Ping      = 0x01
-	Pong      = 0x02
-	FindNode  = 0x03
-	Neighbors = 0x04
+	Ping        = 0x01
+	Pong        = 0x02
+	FindNode    = 0x03
+	Neighbors   = 0x04
+	ENRRequest  = 0x05
+	ENRResponse = 0x06
 )
 
 // startBootstrapServer : 부트스트랩 노드를 실행하는 함수
