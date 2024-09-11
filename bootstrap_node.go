@@ -1,4 +1,4 @@
-// bootstrap.go
+// bootstrap_node.go
 
 package main
 
