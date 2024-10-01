@@ -12,6 +12,7 @@ var connectedPeers []net.Conn
 func main() {
 	// 명령줄
 	mode := flag.String("mode", "fullNode", "Start in 'Bootstrap Node' or 'FullNode' ")
+	port := flag.Int("port", 30303, "The port on which the erver listen (TCP & UDP)")
 	// 명령줄 인자 파싱 (flag.Parse() 필수)
 	flag.Parse()
 
@@ -20,12 +21,12 @@ func main() {
 	bootstrapAddress := "localhost:8282"
 
 	if *mode == "bootstrap" {
-		// startBootstrapServer(bootstrapAddress)
-		bootstrapServer()
+		startBootstrapServer()
 
 	} else if *mode == "fullNode" {
-		// 1. 서버 실행
-		go startServer(serverListening)
+		// 1. TCP,UDP 서버 실행
+		go startTCPServer(serverListening, *port)
+		go startUDPServer(*port)
 
 		// 2. 서버 주소 받아옴
 		serverAddress := <-serverListening

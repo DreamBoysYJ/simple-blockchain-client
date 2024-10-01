@@ -12,6 +12,7 @@ tmax-p2p:
 # Clean 명령 (삭제)
 clean:
 	@echo "Cleaning up..."
+	
 	rm -f tmax-p2p
 
 # Install 명령 (글로벌 명령어로 설치)
