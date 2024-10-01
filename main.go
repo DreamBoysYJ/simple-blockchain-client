@@ -16,23 +16,25 @@ func main() {
 	// 명령줄 인자 파싱 (flag.Parse() 필수)
 	flag.Parse()
 
-	serverListening := make(chan string)
-
+	tcpAddress := make(chan string)
+	udpAddress := make(chan string)
 	bootstrapAddress := "localhost:8282"
 
 	if *mode == "bootstrap" {
 		startBootstrapServer()
 
 	} else if *mode == "fullNode" {
-		// 1. TCP,UDP 서버 실행
-		go startTCPServer(serverListening, *port)
-		go startUDPServer(*port)
+		// 1. TCP 서버 실행
+		go startTCPServer(tcpAddress, *port)
 
-		// 2. 서버 주소 받아옴
-		serverAddress := <-serverListening
+		// 2. UDP 서버 실행
+		go startUDPServer(udpAddress, tcpAddress, *port)
+
+		// 3. UDP 서버 주소 받아옴
+		udpServerAddress := <-udpAddress
 
 		// 3. 부트스트랩 노드에 연결하고, 내 서버 정보 전달
-		nodeAddress := connectBootstrapNode(bootstrapAddress, serverAddress)
+		nodeAddress := connectBootstrapNode(bootstrapAddress, udpServerAddress)
 		fmt.Println("부트스트랩 노드로부터 받은 노드들 주소 :", nodeAddress)
 
 		// 4. 받은 노드들과 연결 시도
