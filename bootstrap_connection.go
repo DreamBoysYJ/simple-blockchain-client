@@ -58,10 +58,11 @@ func connectBootstrapNodeTcp(bootstrapAddress string, serverAddress string) []st
 }
 
 // UDP server
-func connectBootstrapNode(bootstrapAddress string, serverAddress string) []string {
+func connectBootstrapNode(bootstrapAddress string, udpServerAddress string) []string {
 	var nodeLists []string
 
 	// create UDP address, socket
+	// net.ResolveUDPAddr(network,address) : UDP 주소 객체 변환
 	bootstrapUDPAddr, err := net.ResolveUDPAddr("udp", bootstrapAddress)
 	if err != nil {
 		printError(fmt.Sprintf("Error resolving UDP addres : %v", err))
@@ -85,7 +86,7 @@ func connectBootstrapNode(bootstrapAddress string, serverAddress string) []strin
 	}
 
 	// 2. Waiting Pong
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second)) // Read에 대해 최대 기다릴 수 있는 시간
 	buffer := make([]byte, 1024)
 	n, _, err := conn.ReadFromUDP(buffer)
 	if err != nil {
@@ -97,7 +98,7 @@ func connectBootstrapNode(bootstrapAddress string, serverAddress string) []strin
 	if buffer[0] == NodeDiscoveryPong {
 		fmt.Println("Received Pong message")
 		fmt.Println("Sending FindNode message to bootstrap node")
-		findNodeMessage := append([]byte{NodeDiscoveryFindNode}, []byte(serverAddress)...)
+		findNodeMessage := append([]byte{NodeDiscoveryFindNode}, []byte(udpServerAddress)...)
 		_, err = conn.Write(findNodeMessage)
 		if err != nil {
 			printError(fmt.Sprintf("Error sending FindNode message : %v", err))
@@ -105,6 +106,7 @@ func connectBootstrapNode(bootstrapAddress string, serverAddress string) []strin
 		}
 
 		// 4. Waiting Neighbors
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		n, _, err = conn.ReadFromUDP(buffer)
 		if err != nil {
 			printError(fmt.Sprintf("Error receiving Neighbors message : %v", err))

@@ -21,10 +21,10 @@ const (
 )
 
 // TCP 서버 실행
-func startTCPServer(serverListening chan<- string, port int) {
+func startTCPServer(tcpAddress chan<- string, port int) {
 
 	// TCP 서버 시작
-	address := "localhost:" + strconv.Itoa(port)
+	address := "127.0.0.1:" + strconv.Itoa(port)
 	// min := 6666
 	// max := 9999
 	// randomPort := rand.Intn(max-min+1) + min
@@ -36,8 +36,8 @@ func startTCPServer(serverListening chan<- string, port int) {
 		return
 	}
 
-	fmt.Println("Server is listening on port", port)
-	serverListening <- address
+	fmt.Println("TCP Server is listening on :", address)
+	tcpAddress <- address
 
 	defer listener.Close()
 
@@ -58,7 +58,7 @@ func startTCPServer(serverListening chan<- string, port int) {
 }
 
 // UDP 서버 실행
-func startUDPServer(port int) {
+func startUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int) {
 
 	// 1. Create UDP address
 	addr := net.UDPAddr{
@@ -73,9 +73,15 @@ func startUDPServer(port int) {
 		return
 	}
 
-	fmt.Println("UDP Server is listening on ", fmt.Sprintf("%s:%d", addr.IP.String(), addr.Port))
+	fmt.Println("UDP Server is listening on : ", fmt.Sprintf("%s:%d", addr.IP.String(), addr.Port))
+
+	udpAddress <- addr.String()
 
 	defer conn.Close()
+
+	// TCP 주소 받기 전까지 대기
+	tcpListeningAddr := <-tcpAddress
+	fmt.Println("Recevied TCP address for UDP handling : ", tcpListeningAddr)
 
 	// create Buffer
 	buf := make([]byte, 1024)
@@ -106,7 +112,7 @@ func startUDPServer(port int) {
 		case NodeDiscoveryENRRequest:
 			fmt.Printf("Received ENRRequest from %s\n", remoteAddr.String())
 			// ENRResponse(0x06)로 응답
-			message := append([]byte{NodeDiscoveryENRResponse}, []byte("enode")...)
+			message := append([]byte{NodeDiscoveryENRResponse}, []byte(tcpListeningAddr)...)
 			_, err := conn.WriteToUDP(message, remoteAddr)
 			if err != nil {
 				fmt.Println("Error sending UDP message : ", err)
