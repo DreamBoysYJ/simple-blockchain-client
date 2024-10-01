@@ -14,7 +14,6 @@ import (
 func startClient(nodeAddress []string) {
 
 	reader := bufio.NewReader(os.Stdin)
-	// var err error
 
 	// 부트스트랩 노드로부터 받은 주소들에 연결
 	if len(nodeAddress) > 0 {
@@ -82,6 +81,6 @@ func handlePeerCommunication(conn net.Conn) {
 		}
 
 		message = strings.TrimSpace(message)
-		printMessage(fmt.Sprintf("Message received from peer : %s", message))
+		printMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
 	}
 }
