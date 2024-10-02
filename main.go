@@ -33,11 +33,11 @@ func main() {
 		// 3. UDP 서버 주소 받아옴
 		udpServerAddress := <-udpAddress
 
-		// 3. 부트스트랩 노드에 연결하고, 내 서버 정보 전달
+		// 4. 부트스트랩 노드에 연결하고, 내 UDP 주소 전달
 		nodeAddress := connectBootstrapNode(bootstrapAddress, udpServerAddress)
 		fmt.Println("부트스트랩 노드로부터 받은 노드들 주소 :", nodeAddress)
 
-		// 4. 받은 노드들과 연결 시도
+		// 5. 부트스트랩 노드로 부터 받은 노드들과 피어 연결 시도
 		startClient(nodeAddress)
 	} else {
 		fmt.Println("Invalid mode. Use -mode=bootstrap or -mode=fullNode")
