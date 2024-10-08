@@ -5,12 +5,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"strings"
 	"time"
 )
+
+var messageChannel = make(chan string) // 메시지 송신용 채널
 
 func startClient(nodeAddress []string) {
 
@@ -74,9 +75,8 @@ func startClient(nodeAddress []string) {
 				if buffer[0] == NodeDiscoveryENRResponse {
 					tcpServer := string(buffer[1:n])
 					fmt.Println("TCP SERVER :::", tcpServer)
-					// 3. TCP 연결
 
-					// 주소로 UDP Ping 보내기
+					// 5. TCP 연결
 					conn, err := net.Dial("tcp", tcpServer)
 					if err != nil {
 						printError(fmt.Sprintf("Error reading from connection : %v", err))
@@ -95,48 +95,42 @@ func startClient(nodeAddress []string) {
 		fmt.Println("No node addresses provided. Waiting for connection...")
 	}
 
-	// 각 피어와 병렬로 메시지 주고 받기 고루틴
+	// 각 피어와 병렬로 메시지 받기 고루틴
 	for _, conn := range connectedPeers {
-		go handlePeerCommunication(conn) // 각 연결에 대해 별도의 고루틴으로 처리
+		go handleIncomingMessages(conn) // 각 연결에 대해 별도의 고루틴으로 처리
 	}
 
-	// 모든 피어에 메시지 전송
-	for {
-		fmt.Print("Enter message: ")
-		message, _ := reader.ReadString('\n')
-
-		// 모든 피어에 메시지 전송
-		for _, conn := range connectedPeers {
-			if conn != nil {
-				_, err := conn.Write([]byte(message))
-				if err != nil {
-					printError(fmt.Sprintf("Error sending message to peer: %v", err))
-					connectedPeers = removeConn(connectedPeers, conn)
-					conn.Close()
-				}
-			}
+	// 메시지 입력 고루틴
+	go func() {
+		for {
+			fmt.Print("Enter Message : ")
+			message, _ := reader.ReadString('\n')
+			message = strings.TrimSpace(message)
+			messageChannel <- message
 		}
+	}()
 
-	}
+	// 메시지 전송 고루틴
+	go func() {
+		for message := range messageChannel {
+			handleSendingMessages(connectedPeers, message)
+		}
+	}()
+
+	select {} // 메인 루프를 멈추지 않기 위해 블로킹 처리
+
 }
 
-func handlePeerCommunication(conn net.Conn) {
-	defer conn.Close()
-
-	for {
-		message, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				printError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
+// 메시지 보내기 함수
+func handleSendingMessages(peers []net.Conn, message string) {
+	for _, conn := range peers {
+		if conn != nil {
+			_, err := conn.Write([]byte(message + "\n"))
+			if err != nil {
+				printError(fmt.Sprintf("Error sending message to peer : %v", err))
 				connectedPeers = removeConn(connectedPeers, conn)
-
-			} else {
-				printError(fmt.Sprintf("Error reading from peer: %v", err))
+				conn.Close()
 			}
-			return
 		}
-
-		message = strings.TrimSpace(message)
-		printMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
 	}
 }

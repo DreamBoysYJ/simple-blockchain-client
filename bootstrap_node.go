@@ -8,14 +8,6 @@ import (
 	"strings"
 )
 
-// 메시지 타입 상수 정의
-const (
-	NodeDiscoveryPing      = 0x01
-	NodeDiscoveryPong      = 0x02
-	NodeDiscoveryFindNode  = 0x03
-	NodeDiscoveryNeighbors = 0x04
-)
-
 // startBootstrapServer : 부트스트랩 노드를 실행하는 함수
 // func startBootstrapServer(address string) {
 // 	listener, err := net.Listen("tcp", address)

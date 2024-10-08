@@ -34,7 +34,11 @@ func main() {
 		udpServerAddress := <-udpAddress
 
 		// 4. 부트스트랩 노드에 연결하고, 내 UDP 주소 전달
-		nodeAddress := connectBootstrapNode(bootstrapAddress, udpServerAddress)
+		nodeAddress, err := connectBootstrapNode(bootstrapAddress, udpServerAddress)
+		if err != nil {
+			printError(fmt.Sprintf("Failed to connect to bootstrap node: %v", err))
+			return
+		}
 		fmt.Println("부트스트랩 노드로부터 받은 노드들 주소 :", nodeAddress)
 
 		// 5. 부트스트랩 노드로 부터 받은 노드들과 피어 연결 시도

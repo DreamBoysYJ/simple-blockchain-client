@@ -5,19 +5,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
-)
-
-// 메시지 타입 상수 정의
-const (
-	// Node Discovery 상수
-	NodeDiscoveryENRRequest  = 0x05
-	NodeDiscoveryENRResponse = 0x06
-
-	// RLPx 상수
-	RLPx = 0x07
 )
 
 // TCP 서버 실행
@@ -53,7 +44,7 @@ func startTCPServer(tcpAddress chan<- string, port int) {
 		connectedPeers = append(connectedPeers, conn)
 
 		// 피어와 통신 처리
-		go handleConnection(conn)
+		go handleIncomingMessages(conn)
 	}
 }
 
@@ -122,19 +113,26 @@ func startUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int
 		}
 
 	}
-
 }
 
-func handleConnection(conn net.Conn) {
+// 받은 메시지 처리 함수
+func handleIncomingMessages(conn net.Conn) {
 	defer conn.Close()
 
 	for {
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			printError(fmt.Sprintf("Error reading from connection : %v", err))
+			if err == io.EOF {
+				printError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
+				connectedPeers = removeConn(connectedPeers, conn)
+
+			} else {
+				printError(fmt.Sprintf("Error reading from peer: %v", err))
+			}
 			return
 		}
+
 		message = strings.TrimSpace(message)
-		printMessage(fmt.Sprintf("Message received : %s, from :: %v\n", message, conn.RemoteAddr().String()))
+		printMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
 	}
 }
