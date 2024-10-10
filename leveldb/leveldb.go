@@ -1,4 +1,4 @@
-package main
+package leveldb
 
 import (
 	"fmt"
@@ -9,9 +9,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func testLevelDb() {
-
-	os.RemoveAll("test")
+// 1. 뒤부터 순회
+func TestLevelDbOne() {
 
 	// 데이터베이스 열기 (없으면 생성)
 	// path : 프로젝트 실행 pwd
@@ -20,10 +19,11 @@ func testLevelDb() {
 		log.Fatal(err)
 	}
 
+	defer os.RemoveAll("test")
 	defer db.Close()
 
-	// 1000개 블록 저장
-	for i := 1; i <= 1000; i++ {
+	// 30만개 블록 저장
+	for i := 1; i <= 300000; i++ {
 		key := fmt.Sprintf("block:%d", i) //  문자열을 서식을 지정해 생성
 		value := strconv.Itoa(i)          // 숫자 => 문자열
 		err = db.Put([]byte(key), []byte(value), nil)
@@ -33,18 +33,47 @@ func testLevelDb() {
 		}
 	}
 
+	// 뒤부터 순회
 	lastBlock, err := getLastBlockUsingIterator(db)
 	if err != nil {
 		log.Fatalf("Failed to get last block : %v", err)
 	}
 	fmt.Printf("LAST BLOCK :::: %s", lastBlock)
 
-	// 조회
-	// value, err := db.Get([]byte("block:1"), nil)
-	// if err != nil {
-	// 	log.Fatalf("Failed to get data : %v", err)
-	// }
-	// log.Printf("Retrived value %s", value)
+}
+
+// 2. lastblock 따로 저장
+func TestLevelDbTwo() {
+	db, err := leveldb.OpenFile("test2", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer os.RemoveAll("test2")
+	defer db.Close()
+
+	// 30만개 블록 저장
+	// 30만개 last block 저장
+	for i := 1; i <= 300000; i++ {
+		key := fmt.Sprintf("block:%d", i)
+		value := strconv.Itoa(i)
+		err = db.Put([]byte(key), []byte(value), nil)
+		if err != nil {
+			log.Fatalf("Failed to put block %d: %v", i, err)
+		}
+		err = db.Put([]byte("lastblock"), []byte(value), nil)
+		if err != nil {
+			log.Fatalf("Failed to put lastblock : %d: %v", i, err)
+		}
+	}
+
+	// lastblock 조회
+	lastBlock, err := getLastBlockUsingAddingKey(db)
+	if err != nil {
+		log.Fatalf("Failed to get lastblock : %v", err)
+	}
+	fmt.Printf("2번째 테스트 ::: %s", lastBlock)
+
 }
 
 func getLastBlockUsingIterator(db *leveldb.DB) ([]byte, error) {
@@ -70,4 +99,13 @@ func getLastBlockUsingIterator(db *leveldb.DB) ([]byte, error) {
 
 	// 블록 찾지 못한 경우
 	return nil, fmt.Errorf("no blocks found")
+}
+
+func getLastBlockUsingAddingKey(db *leveldb.DB) ([]byte, error) {
+
+	lastBlockValue, err := db.Get([]byte("lastblock"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get lastblock value : %v", err)
+	}
+	return lastBlockValue, nil
 }

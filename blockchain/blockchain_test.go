@@ -1,7 +1,7 @@
-package main
+package blockchain
 
 import "testing"
 
 func TestCreateTx(t *testing.T) {
-	createTx()
+	CreateTx()
 }

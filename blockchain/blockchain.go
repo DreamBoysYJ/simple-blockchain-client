@@ -1,4 +1,4 @@
-package main
+package blockchain
 
 import (
 	"fmt"
@@ -27,15 +27,15 @@ type Block struct {
 	Miner       string
 }
 
-func createTx() {
+func CreateTx() {
 	data := []byte("hello")
 
-	hash := keccak256(data)
+	hash := Keccak256(data)
 	// %x : 16진수
 	fmt.Printf("Keccack 해시값 ::: %x\n ", hash)
 }
 
-func keccak256(data []byte) []byte {
+func Keccak256(data []byte) []byte {
 	// hash 함수 생성
 	hash := sha3.NewLegacyKeccak256()
 	// hash 함수에 데이터 입력

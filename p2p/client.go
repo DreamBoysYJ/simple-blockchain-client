@@ -1,19 +1,21 @@
-// client.go
+// client.g
 
-package main
+package p2p
 
 import (
 	"bufio"
 	"fmt"
 	"net"
 	"os"
+	pc "simple_p2p_client/protocol_constants"
+	"simple_p2p_client/utils"
 	"strings"
 	"time"
 )
 
 var messageChannel = make(chan string) // 메시지 송신용 채널
 
-func startClient(nodeAddress []string) {
+func StartClient(nodeAddress []string) {
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -28,21 +30,21 @@ func startClient(nodeAddress []string) {
 
 			nodeUDPAddr, err := net.ResolveUDPAddr("udp", address)
 			if err != nil {
-				printError(fmt.Sprintf("Error resolving UDP address : %v", err))
+				utils.PrintError(fmt.Sprintf("Error resolving UDP address : %v", err))
 				return
 			}
 			conn, err := net.DialUDP("udp", nil, nodeUDPAddr)
 			if err != nil {
-				printError(fmt.Sprintf("Error connecting to node : %v", err))
+				utils.PrintError(fmt.Sprintf("Error connecting to node : %v", err))
 				return
 			}
 
 			// 1. Send Ping
 			fmt.Println("Sending Ping to node")
-			pingMessage := []byte{NodeDiscoveryPing}
+			pingMessage := []byte{pc.NodeDiscoveryPing}
 			_, err = conn.Write(pingMessage)
 			if err != nil {
-				printError(fmt.Sprintf("Error sending Ping message : %v", err))
+				utils.PrintError(fmt.Sprintf("Error sending Ping message : %v", err))
 				return
 			}
 
@@ -51,16 +53,16 @@ func startClient(nodeAddress []string) {
 			buffer := make([]byte, 1024)
 			n, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
-				printError(fmt.Sprintf("Error receiving Pong message : %v", err))
+				utils.PrintError(fmt.Sprintf("Error receiving Pong message : %v", err))
 				return
 			}
 			// 3. Send ENRRequest
-			if buffer[0] == NodeDiscoveryPong {
+			if buffer[0] == pc.NodeDiscoveryPong {
 				fmt.Println("Received Pong message")
 				fmt.Println("Sending ENRRequest")
-				_, err = conn.Write([]byte{NodeDiscoveryENRRequest})
+				_, err = conn.Write([]byte{pc.NodeDiscoveryENRRequest})
 				if err != nil {
-					printError(fmt.Sprintf("Error sending ENRRequest : %v", err))
+					utils.PrintError(fmt.Sprintf("Error sending ENRRequest : %v", err))
 					return
 				}
 
@@ -68,22 +70,22 @@ func startClient(nodeAddress []string) {
 				conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 				n, _, err = conn.ReadFromUDP(buffer)
 				if err != nil {
-					printError(fmt.Sprintf("Error receiving ENRResponse : %v", err))
+					utils.PrintError(fmt.Sprintf("Error receiving ENRResponse : %v", err))
 					return
 				}
 
-				if buffer[0] == NodeDiscoveryENRResponse {
+				if buffer[0] == pc.NodeDiscoveryENRResponse {
 					tcpServer := string(buffer[1:n])
 					fmt.Println("TCP SERVER :::", tcpServer)
 
 					// 5. TCP 연결
 					conn, err := net.Dial("tcp", tcpServer)
 					if err != nil {
-						printError(fmt.Sprintf("Error reading from connection : %v", err))
+						utils.PrintError(fmt.Sprintf("Error reading from connection : %v", err))
 
 					} else {
 						fmt.Println("Successfully connected to", tcpServer)
-						connectedPeers = append(connectedPeers, conn)
+						ConnectedPeers = append(ConnectedPeers, conn)
 					}
 
 				}
@@ -96,8 +98,8 @@ func startClient(nodeAddress []string) {
 	}
 
 	// 각 피어와 병렬로 메시지 받기 고루틴
-	for _, conn := range connectedPeers {
-		go handleIncomingMessages(conn) // 각 연결에 대해 별도의 고루틴으로 처리
+	for _, conn := range ConnectedPeers {
+		go HandleIncomingMessages(conn) // 각 연결에 대해 별도의 고루틴으로 처리
 	}
 
 	// 메시지 입력 고루틴
@@ -113,7 +115,7 @@ func startClient(nodeAddress []string) {
 	// 메시지 전송 고루틴
 	go func() {
 		for message := range messageChannel {
-			handleSendingMessages(connectedPeers, message)
+			handleSendingMessages(ConnectedPeers, message)
 		}
 	}()
 
@@ -127,8 +129,8 @@ func handleSendingMessages(peers []net.Conn, message string) {
 		if conn != nil {
 			_, err := conn.Write([]byte(message + "\n"))
 			if err != nil {
-				printError(fmt.Sprintf("Error sending message to peer : %v", err))
-				connectedPeers = removeConn(connectedPeers, conn)
+				utils.PrintError(fmt.Sprintf("Error sending message to peer : %v", err))
+				ConnectedPeers = utils.RemoveConn(ConnectedPeers, conn)
 				conn.Close()
 			}
 		}

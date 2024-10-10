@@ -1,4 +1,4 @@
-package main
+package protocol_constants
 
 const (
 	// Node Discovery 상수

@@ -1,18 +1,18 @@
-// server.go
-
-package main
+package p2p
 
 import (
 	"bufio"
 	"fmt"
 	"io"
 	"net"
+	pc "simple_p2p_client/protocol_constants"
+	"simple_p2p_client/utils"
 	"strconv"
 	"strings"
 )
 
 // TCP 서버 실행
-func startTCPServer(tcpAddress chan<- string, port int) {
+func StartTCPServer(tcpAddress chan<- string, port int) {
 
 	// TCP 서버 시작
 	address := "127.0.0.1:" + strconv.Itoa(port)
@@ -23,7 +23,7 @@ func startTCPServer(tcpAddress chan<- string, port int) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
-		printError(fmt.Sprintf("Error starting server: %v", err))
+		utils.PrintError(fmt.Sprintf("Error starting server: %v", err))
 		return
 	}
 
@@ -35,21 +35,21 @@ func startTCPServer(tcpAddress chan<- string, port int) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			printError(fmt.Sprintf("Error accepting connection: %v", err))
+			utils.PrintError(fmt.Sprintf("Error accepting connection: %v", err))
 			continue
 		}
-		printMessage(fmt.Sprintf("Peer connected from: %v", conn.RemoteAddr().String()))
+		utils.PrintMessage(fmt.Sprintf("Peer connected from: %v", conn.RemoteAddr().String()))
 
 		// 연결된 피어를 글로벌 변수에 저장
-		connectedPeers = append(connectedPeers, conn)
+		ConnectedPeers = append(ConnectedPeers, conn)
 
 		// 피어와 통신 처리
-		go handleIncomingMessages(conn)
+		go HandleIncomingMessages(conn)
 	}
 }
 
 // UDP 서버 실행
-func startUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int) {
+func StartUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int) {
 
 	// 1. Create UDP address
 	addr := net.UDPAddr{
@@ -90,20 +90,21 @@ func startUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int
 		messageType := buf[0]
 
 		switch messageType {
+
 		// Node가 payload에 Ping(0x01)을 보냈을 시
-		case NodeDiscoveryPing:
+		case pc.NodeDiscoveryPing:
 			fmt.Printf("Received Ping message from %s\n", remoteAddr.String())
 			// Pong으로 응답
-			_, err = conn.WriteToUDP([]byte{NodeDiscoveryPong}, remoteAddr)
+			_, err = conn.WriteToUDP([]byte{pc.NodeDiscoveryPong}, remoteAddr)
 			if err != nil {
 				fmt.Println("Error sending UDP response : ", err)
 			}
 			fmt.Printf("Sent Pong to %s\n", remoteAddr.String())
 		// Node가 payload에 ENRRequest(0x05)를 보냈을 시
-		case NodeDiscoveryENRRequest:
+		case pc.NodeDiscoveryENRRequest:
 			fmt.Printf("Received ENRRequest from %s\n", remoteAddr.String())
 			// ENRResponse(0x06)로 응답
-			message := append([]byte{NodeDiscoveryENRResponse}, []byte(tcpListeningAddr)...)
+			message := append([]byte{pc.NodeDiscoveryENRResponse}, []byte(tcpListeningAddr)...)
 			_, err := conn.WriteToUDP(message, remoteAddr)
 			if err != nil {
 				fmt.Println("Error sending UDP message : ", err)
@@ -116,23 +117,23 @@ func startUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int
 }
 
 // 받은 메시지 처리 함수
-func handleIncomingMessages(conn net.Conn) {
+func HandleIncomingMessages(conn net.Conn) {
 	defer conn.Close()
 
 	for {
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				printError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
-				connectedPeers = removeConn(connectedPeers, conn)
+				utils.PrintError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
+				ConnectedPeers = utils.RemoveConn(ConnectedPeers, conn)
 
 			} else {
-				printError(fmt.Sprintf("Error reading from peer: %v", err))
+				utils.PrintError(fmt.Sprintf("Error reading from peer: %v", err))
 			}
 			return
 		}
 
 		message = strings.TrimSpace(message)
-		printMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
+		utils.PrintMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
 	}
 }
