@@ -1,6 +1,6 @@
 // utils.go
 
-package main
+package utils
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 // 메시지를 출력하고 입력 프롬프트를 다시 출력
-func printMessage(message string) {
+func PrintMessage(message string) {
 
 	// 현재 줄 지우고 메시지 출력
 	fmt.Printf("\r\033[K%s\n", message)
@@ -18,7 +18,7 @@ func printMessage(message string) {
 }
 
 // 에러 메시지를 출력하고 입력 프롬프트를 다시 출력
-func printError(errorMessage string) {
+func PrintError(errorMessage string) {
 
 	// 현재 줄 지우고 에러 메시지 출력
 	fmt.Printf("\r\033[K[ERROR] %s\n", errorMessage)
@@ -28,7 +28,7 @@ func printError(errorMessage string) {
 }
 
 // 슬라이스에서 i번째 요소를 제거하는 코드
-func removeConn(peers []net.Conn, target net.Conn) []net.Conn {
+func RemoveConn(peers []net.Conn, target net.Conn) []net.Conn {
 	for i, conn := range peers {
 		if conn == target {
 			// 해당 인덱스의 요소를 제거
