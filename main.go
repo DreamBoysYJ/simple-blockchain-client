@@ -6,13 +6,15 @@ import (
 
 	"simple_p2p_client/bootnode"
 	"simple_p2p_client/p2p"
+	rpcserver "simple_p2p_client/rpc-server"
 	"simple_p2p_client/utils"
 )
 
 func main() {
 	// 명령줄
 	mode := flag.String("mode", "fullnode", "Start in 'Bootstrap Node' or 'FullNode' ")
-	port := flag.Int("port", 30303, "The port on which the erver listen (TCP & UDP)")
+	port := flag.Int("port", 30303, "The port on which the server listen (TCP & UDP)")
+	rpcPort := flag.Int("rpcport", 8080, "The port on which the RPC server listens")
 	// 명령줄 인자 파싱 (flag.Parse() 필수)
 	flag.Parse()
 
@@ -24,6 +26,11 @@ func main() {
 		bootnode.StartBootstrapServer()
 
 	} else if *mode == "fullnode" {
+
+		// DB 오픈
+
+		// RPC 서버 시작
+		go rpcserver.StartRpcServer(*rpcPort)
 
 		// 1. TCP 서버 실행
 

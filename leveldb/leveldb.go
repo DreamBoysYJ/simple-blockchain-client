@@ -105,6 +105,7 @@ func GetLastBlock(db *leveldb.DB) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get lastblock value : %v", err)
 	}
+
 	return lastBlockValue, nil
 }
 
