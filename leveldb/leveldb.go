@@ -5,9 +5,32 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
+
+var (
+	dbInstance *leveldb.DB
+	once       sync.Once
+	dbPath     = "leveldb/database"
+)
+
+// db 인스턴스 : db와의 연결을 관리하는 객체, 구조체
+func GetDBInstance() (*leveldb.DB, error) {
+	var err error
+	once.Do(func() {
+		dbInstance, err = leveldb.OpenFile(dbPath, nil)
+	})
+	return dbInstance, err
+}
+
+func CloseDB() error {
+	if dbInstance != nil {
+		return dbInstance.Close()
+	}
+	return nil
+}
 
 // 1. 뒤부터 순회
 func TestLevelDbOne() {
@@ -68,12 +91,21 @@ func TestLevelDbTwo() {
 	}
 
 	// lastblock 조회
-	lastBlock, err := getLastBlockUsingAddingKey(db)
+	lastBlock, err := GetLastBlock(db)
 	if err != nil {
 		log.Fatalf("Failed to get lastblock : %v", err)
 	}
 	fmt.Printf("2번째 테스트 ::: %s", lastBlock)
 
+}
+
+func GetLastBlock(db *leveldb.DB) ([]byte, error) {
+
+	lastBlockValue, err := db.Get([]byte("lastblock"), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get lastblock value : %v", err)
+	}
+	return lastBlockValue, nil
 }
 
 func getLastBlockUsingIterator(db *leveldb.DB) ([]byte, error) {
@@ -99,13 +131,4 @@ func getLastBlockUsingIterator(db *leveldb.DB) ([]byte, error) {
 
 	// 블록 찾지 못한 경우
 	return nil, fmt.Errorf("no blocks found")
-}
-
-func getLastBlockUsingAddingKey(db *leveldb.DB) ([]byte, error) {
-
-	lastBlockValue, err := db.Get([]byte("lastblock"), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get lastblock value : %v", err)
-	}
-	return lastBlockValue, nil
 }
