@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"simple_p2p_client/bootnode"
+	"simple_p2p_client/leveldb"
 	"simple_p2p_client/p2p"
 	rpcserver "simple_p2p_client/rpc-server"
 	"simple_p2p_client/utils"
@@ -27,7 +28,14 @@ func main() {
 
 	} else if *mode == "fullnode" {
 
-		// DB 오픈
+		// DB 정리
+		defer func() {
+			if leveldb.IsDBOpened() {
+				if err := leveldb.CloseDB(); err != nil {
+					fmt.Printf("Failed to close DB: %v\n", err)
+				}
+			}
+		}()
 
 		// RPC 서버 시작
 		go rpcserver.StartRpcServer(*rpcPort)

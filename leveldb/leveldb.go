@@ -25,6 +25,10 @@ func GetDBInstance() (*leveldb.DB, error) {
 	return dbInstance, err
 }
 
+func IsDBOpened() bool {
+	return dbInstance != nil
+}
+
 func CloseDB() error {
 	if dbInstance != nil {
 		return dbInstance.Close()
