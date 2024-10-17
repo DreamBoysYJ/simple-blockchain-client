@@ -69,6 +69,26 @@ func (s *RpcService) GetBlockNumber(r *http.Request, args *BlockNumberArgs, repl
 
 }
 
+type NewAccountArgs struct {
+}
+
+type NewAccountReply struct {
+	PrivateKey string
+	Address    string
+}
+
+func (s *RpcService) NewAccount(r *http.Request, args *NewAccountArgs, reply *NewAccountReply) error {
+
+	privateKey, address, err := account.CreateAccount()
+	if err != nil {
+		return fmt.Errorf("making new account error : %v", err)
+	}
+
+	reply.Address = address
+	reply.PrivateKey = privateKey
+	return nil
+}
+
 func IsValidAddress(address string) bool {
 	// 0x 시작 && 총 42자 && 40자 16진수
 	// ^ : 시작
