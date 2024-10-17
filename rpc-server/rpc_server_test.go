@@ -67,7 +67,7 @@ func TestCreateAccount(t *testing.T) {
 		fmt.Println("fucking err")
 	}
 
-	result, err := account.CreateAccount(newAddress)
+	result, err := account.StoreAccount(newAddress)
 	if err != nil {
 		fmt.Println("fucking err")
 	}

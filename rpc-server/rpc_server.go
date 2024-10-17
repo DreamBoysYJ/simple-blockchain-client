@@ -69,7 +69,7 @@ func (s *RpcService) GetBlockNumber(r *http.Request, args *BlockNumberArgs, repl
 
 }
 
-func isValidAddress(address string) bool {
+func IsValidAddress(address string) bool {
 	// 0x 시작 && 총 42자 && 40자 16진수
 	// ^ : 시작
 	// [0-9a-fA-f] : 이 부분은 괄호 안에 있는 문자들 중 하나를 허용
@@ -94,7 +94,7 @@ func VerifySignature(messageHash []byte, signature []byte, fromAddress string) (
 	fmt.Printf("Recovered public key (uncompressed): %x\n", pubKey)
 
 	// 복구된 공개키로부터 주소 생성
-	address, err := PublicKeyToAddress(pubKey)
+	address, err := account.PublicKeyToAddress(pubKey)
 	fmt.Printf("Address: %s\n", address)
 
 	if err != nil {
@@ -108,26 +108,6 @@ func VerifySignature(messageHash []byte, signature []byte, fromAddress string) (
 		return false, nil
 	}
 
-}
-
-func PublicKeyToAddress(pubKey []byte) (string, error) {
-	// pubKey는 압축되지 않은 공개키여야 함(len = 65, 첫 바이트 0x04)
-
-	if len(pubKey) != 65 {
-		return "", fmt.Errorf("invalid public key length, must be 65 bytes, but got %d bytes", len(pubKey))
-	}
-
-	if pubKey[0] != 0x04 {
-		return "", fmt.Errorf("invalid public key format, must start with 0x04 for uncompressed keys, but got %v", pubKey[0])
-	}
-
-	// keccak256 계산
-	hash := blockchain.Keccak256(pubKey[1:])
-
-	// 마지막 20바이트를 이더리움 주소로 사용
-	address := hash[len(hash)-20:]
-	// 16진수로 출력하고 0x 붙이기
-	return fmt.Sprintf("0x%x", address), nil
 }
 
 func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs, reply *SendTransactionReply) error {
@@ -146,11 +126,11 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 	}
 
 	// from, to 주소 양식이 올바른지
-	if !isValidAddress(args.From) {
+	if !IsValidAddress(args.From) {
 		return fmt.Errorf("invalid address : address 'from' format is wrong")
 	}
 
-	if !isValidAddress(args.To) {
+	if !IsValidAddress(args.To) {
 		return fmt.Errorf("invalid address : address 'to' format is wrong")
 	}
 
@@ -198,7 +178,7 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 	// to 없는 계정이면
 	if !toExists {
 		// 만들어주기
-		_, err := account.CreateAccount(args.To)
+		_, err := account.StoreAccount(args.To)
 		if err != nil {
 			return fmt.Errorf("to account made failed")
 		}

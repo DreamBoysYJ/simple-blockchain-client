@@ -1,11 +1,15 @@
 package account
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"simple_p2p_client/blockchain"
 	"simple_p2p_client/leveldb"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	db "github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -62,7 +66,7 @@ func AccountExists(address string) (bool, error) {
 
 }
 
-func CreateAccount(address string) (bool, error) {
+func StoreAccount(address string) (bool, error) {
 	dbInstance, err := leveldb.GetDBInstance()
 	if err != nil {
 		// 에러
@@ -86,5 +90,52 @@ func CreateAccount(address string) (bool, error) {
 	}
 
 	return true, nil
+
+}
+func PublicKeyToAddress(pubKey []byte) (string, error) {
+	// pubKey는 압축되지 않은 공개키여야 함(len = 65, 첫 바이트 0x04)
+
+	if len(pubKey) != 65 {
+		return "", fmt.Errorf("invalid public key length, must be 65 bytes, but got %d bytes", len(pubKey))
+	}
+
+	if pubKey[0] != 0x04 {
+		return "", fmt.Errorf("invalid public key format, must start with 0x04 for uncompressed keys, but got %v", pubKey[0])
+	}
+
+	// keccak256 계산
+	hash := blockchain.Keccak256(pubKey[1:])
+
+	// 마지막 20바이트를 이더리움 주소로 사용
+	address := hash[len(hash)-20:]
+	// 16진수로 출력하고 0x 붙이기
+	return fmt.Sprintf("0x%x", address), nil
+}
+
+func CreateAccount() (string, string, error) {
+
+	// 1. 개인키 생성
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return "", "", fmt.Errorf("개인키 생성 실패 : %v", err)
+	}
+
+	// 2. 개인키 16진수 문자열로 변환
+	privateKeyBytes := crypto.FromECDSA(privateKey)
+	privateKeyHex := hexutil.Encode(privateKeyBytes)[2:] // 0x 제거
+
+	// 3. 공개키 생성
+	publicKey := privateKey.Public().(*ecdsa.PublicKey)
+	publicKeyBytes := crypto.FromECDSAPub(publicKey)
+	//publicKeyHex := hexutil.Encode(publicKeyBytes)[4:] // 0x04 제거
+
+	// 4. 개인키, 공개키
+
+	address, err := PublicKeyToAddress(publicKeyBytes)
+	if err != nil {
+		return "", "", fmt.Errorf("주소 생성 실패 : %v", err)
+	}
+
+	return privateKeyHex, address, nil
 
 }
