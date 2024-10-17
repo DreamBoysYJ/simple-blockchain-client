@@ -1,0 +1,6 @@
+=============== Oct 16, 2024 (KST) ===============
+17:39:30.142270 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+17:39:30.156569 db@open opening
+17:39:30.158147 version@stat F·[] S·0B[] Sc·[]
+17:39:30.163351 db@janitor F·2 G·0
+17:39:30.163408 db@open done T·6.087667ms
