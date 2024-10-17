@@ -1,6 +1,18 @@
-=============== Oct 16, 2024 (KST) ===============
-17:39:30.142270 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-17:39:30.156569 db@open opening
-17:39:30.158147 version@stat F·[] S·0B[] Sc·[]
-17:39:30.163351 db@janitor F·2 G·0
-17:39:30.163408 db@open done T·6.087667ms
+=============== Oct 17, 2024 (KST) ===============
+17:36:27.199373 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+17:36:27.214587 db@open opening
+17:36:27.214995 version@stat F·[] S·0B[] Sc·[]
+17:36:27.227811 db@janitor F·2 G·0
+17:36:27.227899 db@open done T·13.282041ms
+17:36:27.228620 db@close closing
+17:36:27.228719 db@close done T·108.75µs
+=============== Oct 17, 2024 (KST) ===============
+17:37:14.233998 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+17:37:14.237739 version@stat F·[] S·0B[] Sc·[]
+17:37:14.237784 db@open opening
+17:37:14.237880 journal@recovery F·1
+17:37:14.238217 journal@recovery recovering @1
+17:37:14.245248 memdb@flush created L0@2 N·2 S·205B "acc..679,v2":"acc..679,v1"
+17:37:14.245502 version@stat F·[1] S·205B[205B] Sc·[0.25]
+17:37:14.270557 db@janitor F·3 G·0
+17:37:14.270606 db@open done T·32.808083ms

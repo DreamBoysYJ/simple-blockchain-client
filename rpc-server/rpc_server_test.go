@@ -3,8 +3,12 @@ package rpcserver
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
+	"simple_p2p_client/account"
+	"simple_p2p_client/leveldb"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -50,4 +54,47 @@ func TestCreateMessage(t *testing.T) {
 	fmt.Printf("R: %x\n", r)
 	fmt.Printf("S: %x\n", s)
 	fmt.Printf("V: %x\n", v)
+}
+
+func TestCreateAccount(t *testing.T) {
+
+	defer leveldb.CloseDB()
+
+	newAddress := "0xde589C867174C349d00e9b582867aF5c13A74679"
+
+	dbInstance, err := leveldb.GetDBInstance()
+	if err != nil {
+		fmt.Println("fucking err")
+	}
+
+	result, err := account.CreateAccount(newAddress)
+	if err != nil {
+		fmt.Println("fucking err")
+	}
+	if result {
+		account, err := account.GetAccount(newAddress)
+		if err != nil {
+			fmt.Println("fucking err")
+		}
+		account.Balance = big.NewInt(100000)
+		accountKey := append([]byte("account:"), []byte(newAddress)...)
+
+		accountJson, err := json.Marshal(account)
+		fmt.Println("accountJson::: ", accountJson)
+
+		if err != nil {
+			fmt.Println("fucking err")
+
+		}
+
+		err = dbInstance.Put(accountKey, accountJson, nil)
+		if err != nil {
+			fmt.Println("fucking err")
+		}
+
+		fmt.Println("계정 생성 성공 : %")
+		return
+	}
+	fmt.Println("뭔가 이상해")
+
 }

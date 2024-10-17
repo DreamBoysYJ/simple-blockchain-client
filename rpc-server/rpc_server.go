@@ -3,8 +3,10 @@ package rpcserver
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"net/http"
 	"regexp"
+	"simple_p2p_client/account"
 	"simple_p2p_client/blockchain"
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/utils"
@@ -179,6 +181,43 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 
 	// 3. 계정 상태 확인
 
+	// from : 새로 만든 계정이면 안됨
+	fromExists, err := account.AccountExists(args.From)
+	if err != nil {
+		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
+	}
+	if !fromExists {
+		return fmt.Errorf("from must be already stored")
+	}
+
+	// from, to AccountExists 아니면 저장해주기
+	toExists, err := account.AccountExists(args.To)
+	if err != nil {
+		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
+	}
+	// to 없는 계정이면
+	if !toExists {
+		// 만들어주기
+		_, err := account.CreateAccount(args.To)
+		if err != nil {
+			return fmt.Errorf("to account made failed")
+		}
+	}
+
+	// from.balance >= value인지 확인
+	fromAccount, err := account.GetAccount(args.From)
+	if err != nil {
+		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
+	}
+
+	valueBigInt, err := ConvertStringToBigInt(args.Value)
+	if err != nil {
+		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
+	}
+	if fromAccount.Balance.Cmp(valueBigInt) < 0 {
+		return fmt.Errorf("not enough money, you have balance : %d", fromAccount.Balance)
+	}
+
 	// 4. mempool에 저장
 
 	// 5. 피어에 전파
@@ -187,6 +226,18 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 
 	reply.TxHash = "sew2342342343"
 	return nil
+}
+
+func ConvertStringToBigInt(value string) (*big.Int, error) {
+	bigIntValue := new(big.Int)
+
+	// 10진수 문자열을 *big.Int로 변환
+	_, success := bigIntValue.SetString(value, 10)
+	if !success {
+		return nil, fmt.Errorf("문자열을 big.Int로 변환하는 데 실패했습니다: %s", value)
+	}
+
+	return bigIntValue, nil
 }
 
 func StartRpcServer(port int) {
