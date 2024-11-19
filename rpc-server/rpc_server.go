@@ -3,19 +3,19 @@ package rpcserver
 import (
 	"encoding/hex"
 	"fmt"
-	"math/big"
+
+	encodingJson "encoding/json"
 	"net/http"
-	"regexp"
 	"simple_p2p_client/account"
 	"simple_p2p_client/blockchain"
 	"simple_p2p_client/leveldb"
+	"simple_p2p_client/p2p"
 	"simple_p2p_client/utils"
 	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/decred/dcrd/dcrec/secp256k1"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json"
 )
@@ -89,19 +89,6 @@ func (s *RpcService) NewAccount(r *http.Request, args *NewAccountArgs, reply *Ne
 	return nil
 }
 
-func IsValidAddress(address string) bool {
-	// 0x 시작 && 총 42자 && 40자 16진수
-	// ^ : 시작
-	// [0-9a-fA-f] : 이 부분은 괄호 안에 있는 문자들 중 하나를 허용
-	// {40} 앞 패턴이 몇번 있어야 하는지
-	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
-	return re.MatchString(address)
-}
-
-func PublicKeyToBytes(pubKey *secp256k1.PublicKey) []byte {
-	return pubKey.SerializeUncompressed()
-}
-
 func VerifySignature(messageHash []byte, signature []byte, fromAddress string) (bool, error) {
 
 	// 공개키 복구
@@ -146,11 +133,11 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 	}
 
 	// from, to 주소 양식이 올바른지
-	if !IsValidAddress(args.From) {
+	if !account.IsValidAddress(args.From) {
 		return fmt.Errorf("invalid address : address 'from' format is wrong")
 	}
 
-	if !IsValidAddress(args.To) {
+	if !account.IsValidAddress(args.To) {
 		return fmt.Errorf("invalid address : address 'to' format is wrong")
 	}
 
@@ -190,7 +177,26 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 		return fmt.Errorf("from must be already stored")
 	}
 
-	// from, to AccountExists 아니면 저장해주기
+	// from.balance >= value인지 확인
+	fromAccount, err := account.GetAccount(args.From)
+	if err != nil {
+		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
+	}
+
+	valueBigInt, err := utils.ConvertStringToBigInt(args.Value)
+	if err != nil {
+		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
+	}
+	if fromAccount.Balance.Cmp(valueBigInt) < 0 {
+		return fmt.Errorf("not enough money, you have balance : %d", fromAccount.Balance)
+	}
+
+	// from.nonce == nonce 확인
+	// if fromAccount.Nonce != args.Nonce {
+	// 	return fmt.Errorf("from nonce must be same")
+	// }
+
+	// to AccountExists 아니면 저장해주기
 	toExists, err := account.AccountExists(args.To)
 	if err != nil {
 		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
@@ -204,40 +210,41 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 		}
 	}
 
-	// from.balance >= value인지 확인
-	fromAccount, err := account.GetAccount(args.From)
-	if err != nil {
-		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
-	}
-
-	valueBigInt, err := ConvertStringToBigInt(args.Value)
-	if err != nil {
-		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
-	}
-	if fromAccount.Balance.Cmp(valueBigInt) < 0 {
-		return fmt.Errorf("not enough money, you have balance : %d", fromAccount.Balance)
-	}
-
 	// 4. mempool에 저장
 
-	// 5. 피어에 전파
+	// tx 해시값 구하기
+	rawTransaction := blockchain.RawTransaction{
+		From:  args.From,
+		To:    args.To,
+		Value: valueBigInt,
+		Nonce: args.Nonce,
+	}
+
+	jsonRawTransaction, err := encodingJson.Marshal(rawTransaction)
+	if err != nil {
+		return fmt.Errorf("failed to encoding json raw tx")
+	}
+	jsonRawTransactionHash := blockchain.Keccak256(jsonRawTransaction)
+	jsonRawTransactionHashStr := hex.EncodeToString(jsonRawTransactionHash)
+
+	fullTransaction := blockchain.Transaction{
+		Hash:  jsonRawTransactionHashStr,
+		From:  args.From,
+		To:    args.To,
+		Value: valueBigInt,
+		Nonce: args.Nonce,
+	}
+
+	blockchain.Mempool = append(blockchain.Mempool, fullTransaction)
+
+	// 5. 피어에 jsonRawTransaction 전파
+	p2p.HandleSendingMessages(p2p.ConnectedPeers, string(jsonRawTransaction))
 
 	// 6. 해시값 반환
 
-	reply.TxHash = "sew2342342343"
+	reply.TxHash = "0x" + jsonRawTransactionHashStr
+
 	return nil
-}
-
-func ConvertStringToBigInt(value string) (*big.Int, error) {
-	bigIntValue := new(big.Int)
-
-	// 10진수 문자열을 *big.Int로 변환
-	_, success := bigIntValue.SetString(value, 10)
-	if !success {
-		return nil, fmt.Errorf("문자열을 big.Int로 변환하는 데 실패했습니다: %s", value)
-	}
-
-	return bigIntValue, nil
 }
 
 func StartRpcServer(port int) {

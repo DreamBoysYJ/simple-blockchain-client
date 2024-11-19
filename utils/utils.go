@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 )
 
@@ -36,4 +37,16 @@ func RemoveConn(peers []net.Conn, target net.Conn) []net.Conn {
 		}
 	}
 	return peers // 값이 없으면 원래 슬라이스 반환
+}
+
+func ConvertStringToBigInt(value string) (*big.Int, error) {
+	bigIntValue := new(big.Int)
+
+	// 10진수 문자열을 *big.Int로 변환
+	_, success := bigIntValue.SetString(value, 10)
+	if !success {
+		return nil, fmt.Errorf("문자열을 big.Int로 변환하는 데 실패했습니다: %s", value)
+	}
+
+	return bigIntValue, nil
 }

@@ -14,22 +14,30 @@ import (
 )
 
 // 트랜잭션 구조체
+
+type RawTransaction struct {
+	From  string   `json:"from"`
+	To    string   `json:"to"`
+	Value *big.Int `json:"value"`
+	Nonce uint64   `json:"nonce"`
+}
+
 type Transaction struct {
-	Hash  string
-	From  string
-	To    string
-	Value *big.Int
-	Nonce uint64
+	Hash  string   `json:"hash"`
+	From  string   `json:"from"`
+	To    string   `json:"to"`
+	Value *big.Int `json:"value"`
+	Nonce uint64   `json:"nonce"`
 }
 
 // 블록 구조체
 type Block struct {
-	Number      uint64
-	Hash        string
-	ParentHash  string
-	Timestamp   time.Time
-	Transaction []Transaction
-	Miner       string
+	Number      uint64        `json:"number"`
+	Hash        string        `json:"hash"`
+	ParentHash  string        `json:"parentHash"`
+	Timestamp   time.Time     `json:"timestamp"`
+	Transaction []Transaction `json:"transaction"`
+	Miner       string        `json:"miner"`
 }
 
 func CreateTx() {
@@ -100,3 +108,5 @@ func StoreBlock(block *Block) error {
 	return nil
 
 }
+
+var Mempool []Transaction
