@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
-	"simple_p2p_client/blockchain"
+
 	"simple_p2p_client/leveldb"
+	"simple_p2p_client/utils"
 
 	"github.com/decred/dcrd/dcrec/secp256k1"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -68,6 +69,26 @@ func AccountExists(address string) (bool, error) {
 
 }
 
+func PublicKeyToAddress(pubKey []byte) (string, error) {
+	// pubKey는 압축되지 않은 공개키여야 함(len = 65, 첫 바이트 0x04)
+
+	if len(pubKey) != 65 {
+		return "", fmt.Errorf("invalid public key length, must be 65 bytes, but got %d bytes", len(pubKey))
+	}
+
+	if pubKey[0] != 0x04 {
+		return "", fmt.Errorf("invalid public key format, must start with 0x04 for uncompressed keys, but got %v", pubKey[0])
+	}
+
+	// keccak256 계산
+	hash := utils.Keccak256(pubKey[1:])
+
+	// 마지막 20바이트를 이더리움 주소로 사용
+	address := hash[len(hash)-20:]
+	// 16진수로 출력하고 0x 붙이기
+	return fmt.Sprintf("0x%x", address), nil
+}
+
 func StoreAccount(address string) (bool, error) {
 	dbInstance, err := leveldb.GetDBInstance()
 	if err != nil {
@@ -93,25 +114,6 @@ func StoreAccount(address string) (bool, error) {
 
 	return true, nil
 
-}
-func PublicKeyToAddress(pubKey []byte) (string, error) {
-	// pubKey는 압축되지 않은 공개키여야 함(len = 65, 첫 바이트 0x04)
-
-	if len(pubKey) != 65 {
-		return "", fmt.Errorf("invalid public key length, must be 65 bytes, but got %d bytes", len(pubKey))
-	}
-
-	if pubKey[0] != 0x04 {
-		return "", fmt.Errorf("invalid public key format, must start with 0x04 for uncompressed keys, but got %v", pubKey[0])
-	}
-
-	// keccak256 계산
-	hash := blockchain.Keccak256(pubKey[1:])
-
-	// 마지막 20바이트를 이더리움 주소로 사용
-	address := hash[len(hash)-20:]
-	// 16진수로 출력하고 0x 붙이기
-	return fmt.Sprintf("0x%x", address), nil
 }
 
 func CreateAccount() (string, string, error) {
@@ -153,4 +155,48 @@ func IsValidAddress(address string) bool {
 
 func PublicKeyToBytes(pubKey *secp256k1.PublicKey) []byte {
 	return pubKey.SerializeUncompressed()
+}
+
+func CheckAccountState(from, to, value string, nonce uint64) error {
+	// 1. from 계정이 존재하는지 확인
+	fromExists, err := AccountExists(from)
+	if err != nil {
+		return fmt.Errorf("failed to check if `from` account exists : %v", err)
+	}
+	if !fromExists {
+		return fmt.Errorf("from account must already exist")
+	}
+
+	// 2. from의 value 확인
+	fromAccount, err := GetAccount(from)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve `from` account: %v", err)
+	}
+	valueBigInt, err := utils.ConvertStringToBigInt(value)
+	if err != nil {
+		return fmt.Errorf("failed to convert value to big.Int: %v", err)
+	}
+
+	if fromAccount.Balance.Cmp(valueBigInt) < 0 {
+		return fmt.Errorf("insufficient funds : available balance is %d", fromAccount.Balance)
+	}
+
+	// 3. from의 nonce 확인
+	// if fromAccount.Nonce != nonce {
+	// 	return fmt.Errorf("nonce mismatch : expected %d, got %d", fromAccount.Nonce, nonce)
+	// }
+
+	// 4. to 계정이 없다면 생성해주기
+	toExists, err := AccountExists(to)
+	if err != nil {
+		return fmt.Errorf("failed to check if `to` account exists : %v", err)
+	}
+	if !toExists {
+		_, err := StoreAccount(to)
+		if err != nil {
+			return fmt.Errorf("failed to create `to` account : %v", err)
+		}
+	}
+	return nil
+
 }

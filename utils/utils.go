@@ -3,9 +3,12 @@
 package utils
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net"
+
+	"golang.org/x/crypto/sha3"
 )
 
 // 메시지를 출력하고 입력 프롬프트를 다시 출력
@@ -49,4 +52,18 @@ func ConvertStringToBigInt(value string) (*big.Int, error) {
 	}
 
 	return bigIntValue, nil
+}
+
+func Keccak256(data []byte) []byte {
+	// hash 함수 생성
+	hash := sha3.NewLegacyKeccak256()
+	// hash 함수에 데이터 입력
+	hash.Write(data)
+	// 해시값을 계산하여 반환
+	return hash.Sum(nil)
+
+}
+
+func BytesToHex(data []byte) string {
+	return hex.EncodeToString(data)
 }

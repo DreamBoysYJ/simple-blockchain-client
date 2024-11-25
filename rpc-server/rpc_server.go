@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	encodingJson "encoding/json"
 	"net/http"
 	"simple_p2p_client/account"
 	"simple_p2p_client/blockchain"
@@ -12,9 +11,6 @@ import (
 	"simple_p2p_client/p2p"
 	"simple_p2p_client/utils"
 	"strconv"
-	"strings"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json"
@@ -89,75 +85,28 @@ func (s *RpcService) NewAccount(r *http.Request, args *NewAccountArgs, reply *Ne
 	return nil
 }
 
-func VerifySignature(messageHash []byte, signature []byte, fromAddress string) (bool, error) {
-
-	// 공개키 복구
-	pubKey, err := crypto.Ecrecover(messageHash, signature)
-	if err != nil {
-		return false, fmt.Errorf("failed to recover public key : %v", err)
-	}
-
-	// 공개키를 바이트 배열로 변환 (압축되지 않은 형식)
-	fmt.Printf("Recovered public key (uncompressed): %x\n", pubKey)
-
-	// 복구된 공개키로부터 주소 생성
-	address, err := account.PublicKeyToAddress(pubKey)
-	fmt.Printf("Address: %s\n", address)
-
-	if err != nil {
-		return false, fmt.Errorf("failed to create address from public key : %v", err)
-	}
-
-	// from과 비교
-	if strings.EqualFold(address, fromAddress) {
-		return true, nil
-	} else {
-		return false, nil
-	}
-
-}
-
 func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs, reply *SendTransactionReply) error {
 
 	// 1. Transaction Fields 검증
-
-	// 빈 인자가 있는지
-	if args.From == "" || args.To == "" || args.Value == "" {
-		return fmt.Errorf("missing required fields : 'from', 'to', or 'value'")
-	}
-
-	// Value가 양의 정수인지
-	valueInt, err := strconv.Atoi(args.Value)
-	if err != nil || valueInt <= 0 {
-		return fmt.Errorf("invalid value : must be a positive integer")
-	}
-
-	// from, to 주소 양식이 올바른지
-	if !account.IsValidAddress(args.From) {
-		return fmt.Errorf("invalid address : address 'from' format is wrong")
-	}
-
-	if !account.IsValidAddress(args.To) {
-		return fmt.Errorf("invalid address : address 'to' format is wrong")
+	err := blockchain.ValidateTransactionFields(args.From, args.To, args.Value, args.Signature, args.Nonce)
+	if err != nil {
+		return fmt.Errorf("transaction validation failed : %w", err)
 	}
 
 	// 2. Sig 검증
 
-	// message = from,to,value,nonce
+	// Transaction message = from,to,value,nonce
 
 	message := fmt.Sprintf("%s%s%s%d", args.From, args.To, args.Value, args.Nonce)
-	fmt.Println("MESSAGE :::", message)
 
-	messageHash := blockchain.Keccak256([]byte(message))
-	fmt.Println("MESSAGE HASH :::", messageHash)
+	messageHash := utils.Keccak256([]byte(message))
 
-	signature, err := hex.DecodeString(args.Signature)
-	fmt.Println("SIGNATURE :::", signature)
-
+	hewSignature, err := hex.DecodeString(args.Signature)
 	if err != nil {
 		return fmt.Errorf("invalid signature format")
 	}
-	isValidSig, err := VerifySignature(messageHash, signature, args.From)
+
+	isValidSig, err := blockchain.VerifySignature(messageHash, hewSignature, args.From)
 
 	if err != nil {
 		return fmt.Errorf("signature verification failed : %v", err)
@@ -168,82 +117,33 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 
 	// 3. 계정 상태 확인
 
-	// from : 새로 만든 계정이면 안됨
-	fromExists, err := account.AccountExists(args.From)
+	err = account.CheckAccountState(args.From, args.To, args.Value, args.Nonce)
 	if err != nil {
-		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
-	}
-	if !fromExists {
-		return fmt.Errorf("from must be already stored")
-	}
-
-	// from.balance >= value인지 확인
-	fromAccount, err := account.GetAccount(args.From)
-	if err != nil {
-		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
-	}
-
-	valueBigInt, err := utils.ConvertStringToBigInt(args.Value)
-	if err != nil {
-		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
-	}
-	if fromAccount.Balance.Cmp(valueBigInt) < 0 {
-		return fmt.Errorf("not enough money, you have balance : %d", fromAccount.Balance)
-	}
-
-	// from.nonce == nonce 확인
-	// if fromAccount.Nonce != args.Nonce {
-	// 	return fmt.Errorf("from nonce must be same")
-	// }
-
-	// to AccountExists 아니면 저장해주기
-	toExists, err := account.AccountExists(args.To)
-	if err != nil {
-		return fmt.Errorf("값을 big.Int로 변환하는 데 실패했습니다: %v", err)
-	}
-	// to 없는 계정이면
-	if !toExists {
-		// 만들어주기
-		_, err := account.StoreAccount(args.To)
-		if err != nil {
-			return fmt.Errorf("to account made failed")
-		}
+		return fmt.Errorf("account state validation failed : %v", err)
 	}
 
 	// 4. mempool에 저장
 
-	// tx 해시값 구하기
-	rawTransaction := blockchain.RawTransaction{
-		From:  args.From,
-		To:    args.To,
-		Value: valueBigInt,
-		Nonce: args.Nonce,
-	}
-
-	jsonRawTransaction, err := encodingJson.Marshal(rawTransaction)
+	valueBigInt, err := utils.ConvertStringToBigInt(args.Value)
 	if err != nil {
-		return fmt.Errorf("failed to encoding json raw tx")
-	}
-	jsonRawTransactionHash := blockchain.Keccak256(jsonRawTransaction)
-	jsonRawTransactionHashStr := hex.EncodeToString(jsonRawTransactionHash)
-
-	fullTransaction := blockchain.Transaction{
-		Hash:  jsonRawTransactionHashStr,
-		From:  args.From,
-		To:    args.To,
-		Value: valueBigInt,
-		Nonce: args.Nonce,
+		return fmt.Errorf("failed to convert value string to int : %v", err)
 	}
 
-	blockchain.Mempool = append(blockchain.Mempool, fullTransaction)
+	// 4. 트랜잭션 생성
+	tx, jsonRawTransactionStr, err := blockchain.CreateTransaction(args.From, args.To, valueBigInt, args.Nonce)
+	if err != nil {
+		return fmt.Errorf("failed to create transaction : %v", err)
+	}
 
-	// 5. 피어에 jsonRawTransaction 전파
-	p2p.HandleSendingMessages(p2p.ConnectedPeers, string(jsonRawTransaction))
+	// 5. Mempool에 저장
+	blockchain.AppendToMempool(tx)
 
-	// 6. 해시값 반환
+	// 6. 피어에 jsonRawTransaction 전파
+	p2p.HandleSendingMessages(p2p.ConnectedPeers, jsonRawTransactionStr)
 
-	reply.TxHash = "0x" + jsonRawTransactionHashStr
+	// 7. 해시값 반환
 
+	reply.TxHash = tx.Hash
 	return nil
 }
 
