@@ -57,6 +57,7 @@ func TestCreateMessage(t *testing.T) {
 }
 
 func TestCreateAccount(t *testing.T) {
+	leveldb.SetDBPath("../db/node3")
 
 	defer leveldb.CloseDB()
 

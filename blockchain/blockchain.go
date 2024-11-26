@@ -1,10 +1,12 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"simple_p2p_client/account"
+
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/utils"
 	"strconv"
@@ -19,18 +21,20 @@ import (
 // 트랜잭션 구조체
 
 type RawTransaction struct {
-	From  string   `json:"from"`
-	To    string   `json:"to"`
-	Value *big.Int `json:"value"`
-	Nonce uint64   `json:"nonce"`
+	From      string   `json:"from"`
+	To        string   `json:"to"`
+	Value     *big.Int `json:"value"`
+	Nonce     uint64   `json:"nonce"`
+	Signature string   `json:"signature"`
 }
 
 type Transaction struct {
-	Hash  string   `json:"hash"`
-	From  string   `json:"from"`
-	To    string   `json:"to"`
-	Value *big.Int `json:"value"`
-	Nonce uint64   `json:"nonce"`
+	Hash      string   `json:"hash"`
+	From      string   `json:"from"`
+	To        string   `json:"to"`
+	Value     *big.Int `json:"value"`
+	Nonce     uint64   `json:"nonce"`
+	Signature string   `json:"signature"`
 }
 
 // 블록 구조체
@@ -45,7 +49,7 @@ type Block struct {
 
 // Mempool
 var (
-	Mempool []Transaction
+	Mempool = make(map[string]Transaction)
 	mu      sync.Mutex
 )
 
@@ -163,26 +167,46 @@ func StoreBlock(block *Block) error {
 	// batch 실행
 	dbInstance.Write(batch, nil)
 	if err != nil {
-		return fmt.Errorf("Failed to write batch to LevelDB: %w", err)
+		return fmt.Errorf("failed to write batch to LevelDB: %w", err)
 	}
 	return nil
 
 }
 
-func AppendToMempool(tx Transaction) {
+func CheckTxInMempool(txHash string) bool {
+	if _, exists := Mempool[txHash]; exists {
+		return true
+	}
+	return false
+}
+
+func AppendToMempool(tx Transaction) error {
 	mu.Lock()
 	defer mu.Unlock()
-	Mempool = append(Mempool, tx)
+
+	// 중복 tx인지 확인
+	if _, exists := Mempool[tx.Hash]; exists {
+		// 중복 트랜잭션
+		return fmt.Errorf("tx already in mempool")
+
+	}
+
+	// 추가
+	Mempool[tx.Hash] = tx
+	fmt.Println("트랜잭션 멤풀에 들어갔따!")
+
+	return nil
 
 }
 
-func CreateTransaction(from, to string, value *big.Int, nonce uint64) (Transaction, string, error) {
+func CreateTransaction(from, to, signature string, value *big.Int, nonce uint64) (Transaction, string, error) {
 	// 1. RawTransaction 생성
 	rawTransaction := RawTransaction{
-		From:  from,
-		To:    to,
-		Value: value,
-		Nonce: nonce,
+		From:      from,
+		To:        to,
+		Value:     value,
+		Nonce:     nonce,
+		Signature: signature,
 	}
 
 	// 2. JSON 직렬화
@@ -198,12 +222,68 @@ func CreateTransaction(from, to string, value *big.Int, nonce uint64) (Transacti
 
 	// 4. 트랜잭션 생성
 	fullTransaction := Transaction{
-		Hash:  jsoonRawTransactionHashStr,
-		From:  from,
-		To:    to,
-		Value: value,
-		Nonce: nonce,
+		Hash:      jsoonRawTransactionHashStr,
+		From:      from,
+		To:        to,
+		Value:     value,
+		Nonce:     nonce,
+		Signature: signature,
 	}
 
 	return fullTransaction, string(jsonRawTransaction), nil
+}
+
+// Peer로 부터 트랜잭션을 수신했을 때 검증
+func ValidateTransaction(message string) (string, error) {
+	// 1. RawTransaction 구조체 변환
+	var rawTransaction RawTransaction
+	err := json.Unmarshal([]byte(message), &rawTransaction)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse raw transaction : %v", err)
+
+	}
+
+	// 2. 트랜잭션 필드 검증
+	err = ValidateTransactionFields(rawTransaction.From, rawTransaction.To, rawTransaction.Value.String(), rawTransaction.Signature, rawTransaction.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate transaction fields : %w", err)
+	}
+
+	// 3. 서명 검증
+	txMessage := fmt.Sprintf("%s%s%s%d", rawTransaction.From, rawTransaction.To, rawTransaction.Value, rawTransaction.Nonce)
+	txMessageHash := utils.Keccak256([]byte(txMessage))
+	hexSignature, err := hex.DecodeString(rawTransaction.Signature)
+	if err != nil {
+		return "", fmt.Errorf("invalid signature format")
+	}
+	isValidSig, err := VerifySignature(txMessageHash, hexSignature, rawTransaction.From)
+
+	if err != nil {
+		return "", fmt.Errorf("signature verification failed : %v", err)
+	}
+	if !isValidSig {
+		return "", fmt.Errorf("signature is invalid")
+	}
+
+	// 4. 계정 상태 확인
+	err = account.CheckAccountState(rawTransaction.From, rawTransaction.To, rawTransaction.Value.String(), rawTransaction.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("account state validation failed : %v", err)
+	}
+
+	// 5. 트랜잭션 생성
+	tx, jsonRawTransactionStr, err := CreateTransaction(rawTransaction.From, rawTransaction.To, rawTransaction.Signature, rawTransaction.Value, rawTransaction.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("failed to create transaction : %v", err)
+	}
+
+	// 6. Mempool에 저장
+	err = AppendToMempool(tx)
+	if err != nil {
+		return "", fmt.Errorf("failed to append to mempool : %v", err)
+	}
+
+	// 7. 반환
+	return jsonRawTransactionStr, nil
+
 }

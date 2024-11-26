@@ -115,7 +115,7 @@ func StartClient(nodeAddress []string) {
 	// 메시지 전송 고루틴
 	go func() {
 		for message := range messageChannel {
-			HandleSendingMessages(ConnectedPeers, message)
+			HandleSendingMessages(ConnectedPeers, 0x00, message)
 		}
 	}()
 
@@ -124,10 +124,14 @@ func StartClient(nodeAddress []string) {
 }
 
 // 메시지 보내기 함수
-func HandleSendingMessages(peers []net.Conn, message string) {
+func HandleSendingMessages(peers []net.Conn, protocolID byte, message string) {
+
+	fullMessage := append([]byte{protocolID}, []byte(message+"\n")...)
+
 	for _, conn := range peers {
 		if conn != nil {
-			_, err := conn.Write([]byte(message + "\n"))
+			// 메시지 전송
+			_, err := conn.Write([]byte(fullMessage))
 			if err != nil {
 				utils.PrintError(fmt.Sprintf("Error sending message to peer : %v", err))
 				ConnectedPeers = utils.RemoveConn(ConnectedPeers, conn)

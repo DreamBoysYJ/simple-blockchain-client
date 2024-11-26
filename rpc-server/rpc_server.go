@@ -9,6 +9,7 @@ import (
 	"simple_p2p_client/blockchain"
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/p2p"
+	"simple_p2p_client/protocol_constants"
 	"simple_p2p_client/utils"
 	"strconv"
 
@@ -101,12 +102,12 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 
 	messageHash := utils.Keccak256([]byte(message))
 
-	hewSignature, err := hex.DecodeString(args.Signature)
+	hexSignature, err := hex.DecodeString(args.Signature)
 	if err != nil {
 		return fmt.Errorf("invalid signature format")
 	}
 
-	isValidSig, err := blockchain.VerifySignature(messageHash, hewSignature, args.From)
+	isValidSig, err := blockchain.VerifySignature(messageHash, hexSignature, args.From)
 
 	if err != nil {
 		return fmt.Errorf("signature verification failed : %v", err)
@@ -122,15 +123,13 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 		return fmt.Errorf("account state validation failed : %v", err)
 	}
 
-	// 4. mempool에 저장
-
 	valueBigInt, err := utils.ConvertStringToBigInt(args.Value)
 	if err != nil {
 		return fmt.Errorf("failed to convert value string to int : %v", err)
 	}
 
 	// 4. 트랜잭션 생성
-	tx, jsonRawTransactionStr, err := blockchain.CreateTransaction(args.From, args.To, valueBigInt, args.Nonce)
+	tx, jsonRawTransactionStr, err := blockchain.CreateTransaction(args.From, args.To, args.Signature, valueBigInt, args.Nonce)
 	if err != nil {
 		return fmt.Errorf("failed to create transaction : %v", err)
 	}
@@ -139,7 +138,8 @@ func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs,
 	blockchain.AppendToMempool(tx)
 
 	// 6. 피어에 jsonRawTransaction 전파
-	p2p.HandleSendingMessages(p2p.ConnectedPeers, jsonRawTransactionStr)
+	fmt.Println("JSON RAW TX ::: ", jsonRawTransactionStr)
+	p2p.HandleSendingMessages(p2p.ConnectedPeers, protocol_constants.P2PTransactionMessage, jsonRawTransactionStr)
 
 	// 7. 해시값 반환
 

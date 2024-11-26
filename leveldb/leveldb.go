@@ -16,6 +16,10 @@ var (
 	dbPath     = "leveldb/database"
 )
 
+func SetDBPath(path string) {
+	dbPath = path
+}
+
 // db 인스턴스 : db와의 연결을 관리하는 객체, 구조체
 func GetDBInstance() (*leveldb.DB, error) {
 	var err error

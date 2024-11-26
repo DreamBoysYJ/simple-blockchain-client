@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"simple_p2p_client/bootnode"
 	"simple_p2p_client/leveldb"
@@ -16,6 +17,7 @@ func main() {
 	mode := flag.String("mode", "fullnode", "Start in 'Bootstrap Node' or 'FullNode' ")
 	port := flag.Int("port", 30303, "The port on which the server listen (TCP & UDP)")
 	rpcPort := flag.Int("rpcport", 8080, "The port on which the RPC server listens")
+	nodeID := flag.String("nodeID", "default", "Unique node identifier")
 	// 명령줄 인자 파싱 (flag.Parse() 필수)
 	flag.Parse()
 
@@ -23,19 +25,33 @@ func main() {
 	udpAddress := make(chan string)
 	bootstrapAddress := "localhost:8282"
 
+	// nodeID 별 경로 설정
+	dbPath := fmt.Sprintf("./db/%s", *nodeID)
+	if err := ensureDBDirectory(dbPath); err != nil {
+		fmt.Printf("Failed to prepare DB directory : %v/n", err)
+		os.Exit(1)
+	}
+
+	// Open DB
+	leveldb.SetDBPath(dbPath)
+	_, err := leveldb.GetDBInstance()
+	if err != nil {
+		fmt.Printf("Failed to open DB for node %s: %v\n", *nodeID, err)
+		os.Exit(1)
+	}
+	// DB 정리
+	defer func() {
+		if leveldb.IsDBOpened() {
+			if err := leveldb.CloseDB(); err != nil {
+				fmt.Printf("Failed to close DB: %v\n", err)
+			}
+		}
+	}()
+
 	if *mode == "bootnode" {
 		bootnode.StartBootstrapServer()
 
 	} else if *mode == "fullnode" {
-
-		// DB 정리
-		defer func() {
-			if leveldb.IsDBOpened() {
-				if err := leveldb.CloseDB(); err != nil {
-					fmt.Printf("Failed to close DB: %v\n", err)
-				}
-			}
-		}()
 
 		// RPC 서버 시작
 		go rpcserver.StartRpcServer(*rpcPort)
@@ -64,4 +80,15 @@ func main() {
 		fmt.Println("Invalid mode. Use -mode=bootstrap or -mode=fullNode")
 	}
 
+}
+
+// DB 디렉토리를 확인하고 없으면 생성
+func ensureDBDirectory(dbPath string) error {
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		err := os.MkdirAll(dbPath, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create DB directory : %v", err)
+		}
+	}
+	return nil
 }

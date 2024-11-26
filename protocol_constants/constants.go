@@ -11,4 +11,8 @@ const (
 
 	// RLPx 상수
 	RLPx = 0x07
+
+	// P2P Protocol
+	P2PTransactionMessage = 0x01
+	P2PBlockMessage       = 0x02
 )
