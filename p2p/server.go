@@ -7,8 +7,10 @@ import (
 	"io"
 	"net"
 	"simple_p2p_client/blockchain"
+	"simple_p2p_client/mediator"
 	pc "simple_p2p_client/protocol_constants"
 	"simple_p2p_client/utils"
+
 	"strconv"
 	"strings"
 )
@@ -46,7 +48,7 @@ func StartTCPServer(tcpAddress chan<- string, port int) {
 		ConnectedPeers = append(ConnectedPeers, conn)
 
 		// 피어와 통신 처리
-		go HandleIncomingMessages(conn)
+		go RefactorHandleIncomingMessages(conn)
 	}
 }
 
@@ -181,5 +183,28 @@ func HandleIncomingMessages(conn net.Conn) {
 
 		}
 
+	}
+}
+func RefactorHandleIncomingMessages(conn net.Conn) {
+	defer conn.Close()
+
+	mediatorInstance := mediator.GetMediatorInstance()
+	for {
+		message, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				utils.PrintError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
+				ConnectedPeers = utils.RemoveConn(ConnectedPeers, conn)
+
+			} else {
+				utils.PrintError(fmt.Sprintf("Error reading from peer: %v", err))
+			}
+			return
+		}
+		// 메시지 처리
+		message = strings.TrimSpace(message)
+
+		// p2p => blockchain 메시지 전달
+		mediatorInstance.P2PToBlockchain <- message
 	}
 }

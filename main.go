@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"simple_p2p_client/blockchain"
 	"simple_p2p_client/bootnode"
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/p2p"
@@ -73,6 +74,8 @@ func main() {
 			return
 		}
 		fmt.Println("부트스트랩 노드로부터 받은 노드들 주소 :", nodeAddress)
+
+		go blockchain.StartBlockchainProcessor()
 
 		// 5. 부트스트랩 노드로 부터 받은 노드들과 피어 연결 시도
 		p2p.StartClient(nodeAddress)

@@ -67,3 +67,8 @@ func Keccak256(data []byte) []byte {
 func BytesToHex(data []byte) string {
 	return hex.EncodeToString(data)
 }
+
+func Keccak256Hex(data []byte) string {
+	hash := Keccak256(data)
+	return hex.EncodeToString(hash)
+}

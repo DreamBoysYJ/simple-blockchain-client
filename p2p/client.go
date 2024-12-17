@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"simple_p2p_client/mediator"
 	pc "simple_p2p_client/protocol_constants"
 	"simple_p2p_client/utils"
 	"strings"
@@ -116,6 +117,14 @@ func StartClient(nodeAddress []string) {
 	go func() {
 		for message := range messageChannel {
 			HandleSendingMessages(ConnectedPeers, 0x00, message)
+		}
+	}()
+
+	// BlockchainToP2P 채널에서 메시지를 읽어와 피어들에게 전송
+	go func() {
+		for processedMessage := range mediator.GetMediatorInstance().BlockchainToP2P {
+			utils.PrintMessage(fmt.Sprintf("Forwarding processed message to peers: %s", processedMessage))
+			HandleSendingMessages(ConnectedPeers, pc.P2PTransactionMessage, processedMessage)
 		}
 	}()
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 	"simple_p2p_client/account"
+	"simple_p2p_client/mediator"
+	"simple_p2p_client/protocol_constants"
 
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/utils"
@@ -286,4 +288,93 @@ func ValidateTransaction(message string) (string, error) {
 	// 7. 반환
 	return jsonRawTransactionStr, nil
 
+}
+
+func StartBlockchainProcessor() {
+	mediatorInstance := mediator.GetMediatorInstance()
+
+	go func() {
+		for message := range mediatorInstance.P2PToBlockchain {
+
+			if len(message) == 0 {
+				fmt.Println("Received empty message, skipping...")
+				continue
+			}
+
+			// 첫바이트로 메시지 타입 판별
+			messageBytes := []byte(message)
+			messageType := messageBytes[0]
+			messageContent := string(messageBytes[1:])
+
+			switch messageType {
+			case protocol_constants.P2PTransactionMessage:
+				fmt.Printf("Processing transaction : %s\n", messageContent)
+				// 트랜잭션 처리
+				processedMessage, err := ProcessTransaction(messageContent)
+				if err != nil {
+					fmt.Printf("Transaction validation failed : %v\n", err)
+					continue
+				}
+				// Blockchain => p2p 전달
+				mediatorInstance.BlockchainToP2P <- processedMessage
+
+			case protocol_constants.P2PBlockMessage:
+				fmt.Printf("Processing block : %s\n", messageContent)
+				// TODO : 블록 처리 로직
+
+			default: // 알수 없는 메시지 타입
+				fmt.Printf("message rece")
+			}
+
+		}
+	}()
+}
+
+// ProcessTransaction handles validation and storage of a transaction
+func ProcessTransaction(rawTransactionMessage string) (string, error) {
+	// 1. RawTransaction 구조체로 변환
+	var rawTransaction RawTransaction
+	err := json.Unmarshal([]byte(rawTransactionMessage), &rawTransaction)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse raw transaction: %v", err)
+	}
+
+	// 2. 트랜잭션 필드 검증
+	err = ValidateTransactionFields(rawTransaction.From, rawTransaction.To, rawTransaction.Value.String(), rawTransaction.Signature, rawTransaction.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("transaction field validation failed: %v", err)
+	}
+
+	// 3. 서명 검증
+	message := fmt.Sprintf("%s%s%s%d", rawTransaction.From, rawTransaction.To, rawTransaction.Value.String(), rawTransaction.Nonce)
+	messageHash := utils.Keccak256([]byte(message))
+	decodedSignature, err := hex.DecodeString(rawTransaction.Signature)
+	if err != nil {
+		return "", fmt.Errorf("invalid signature format: %v", err)
+	}
+	isValidSig, err := VerifySignature(messageHash, decodedSignature, rawTransaction.From)
+	if err != nil || !isValidSig {
+		return "", fmt.Errorf("signature verification failed: %v", err)
+	}
+
+	// 4. 계정 상태 확인
+	err = account.CheckAccountState(rawTransaction.From, rawTransaction.To, rawTransaction.Value.String(), rawTransaction.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("account state validation failed: %v", err)
+	}
+
+	// 5. 트랜잭션 생성
+	tx, jsonRawTransactionStr, err := CreateTransaction(rawTransaction.From, rawTransaction.To, rawTransaction.Signature, rawTransaction.Value, rawTransaction.Nonce)
+	if err != nil {
+		return "", fmt.Errorf("failed to create transaction: %v", err)
+	}
+
+	// 6. Mempool에 저장
+	err = AppendToMempool(tx)
+	if err != nil {
+		return "", fmt.Errorf("failed to append transaction to mempool: %v", err)
+	}
+
+	// 7. 반환
+	return jsonRawTransactionStr, nil
 }
