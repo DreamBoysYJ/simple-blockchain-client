@@ -100,7 +100,7 @@ func StartClient(nodeAddress []string) {
 
 	// 각 피어와 병렬로 메시지 받기 고루틴
 	for _, conn := range ConnectedPeers {
-		go HandleIncomingMessages(conn) // 각 연결에 대해 별도의 고루틴으로 처리
+		go RefactorHandleIncomingMessages(conn) // 각 연결에 대해 별도의 고루틴으로 처리
 	}
 
 	// 메시지 입력 고루틴
@@ -123,8 +123,18 @@ func StartClient(nodeAddress []string) {
 	// BlockchainToP2P 채널에서 메시지를 읽어와 피어들에게 전송
 	go func() {
 		for processedMessage := range mediator.GetMediatorInstance().BlockchainToP2P {
+
+			if len(processedMessage) == 0 {
+				utils.PrintError("Received empty message, skipping...")
+				continue
+			}
+
+			// 첫 바이트 (프로토콜 ID)와 나머지 메시지 분리
+			protocolID := processedMessage[0]
+			messageContent := processedMessage[1:]
+
 			utils.PrintMessage(fmt.Sprintf("Forwarding processed message to peers: %s", processedMessage))
-			HandleSendingMessages(ConnectedPeers, pc.P2PTransactionMessage, processedMessage)
+			HandleSendingMessages(ConnectedPeers, protocolID, messageContent)
 		}
 	}()
 

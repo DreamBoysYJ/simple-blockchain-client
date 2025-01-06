@@ -2,6 +2,7 @@ package account
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -182,9 +183,9 @@ func CheckAccountState(from, to, value string, nonce uint64) error {
 	}
 
 	// 3. from의 nonce 확인
-	// if fromAccount.Nonce != nonce {
-	// 	return fmt.Errorf("nonce mismatch : expected %d, got %d", fromAccount.Nonce, nonce)
-	// }
+	if fromAccount.Nonce > nonce {
+		return fmt.Errorf("nonce mismatch : expected %d, got %d", fromAccount.Nonce, nonce)
+	}
 
 	// 4. to 계정이 없다면 생성해주기
 	toExists, err := AccountExists(to)
@@ -199,4 +200,22 @@ func CheckAccountState(from, to, value string, nonce uint64) error {
 	}
 	return nil
 
+}
+
+// 개인 키 로드 함수
+func LoadPrivateKey(privateKeyHex string) (*ecdsa.PrivateKey, error) {
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %v", err)
+	}
+	return privateKey, nil
+}
+
+// 메시지 서명 함수
+func SignMessage(hash []byte, privateKey *ecdsa.PrivateKey) (string, error) {
+	signature, err := crypto.Sign(hash, privateKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign message: %v", err)
+	}
+	return hex.EncodeToString(signature), nil
 }

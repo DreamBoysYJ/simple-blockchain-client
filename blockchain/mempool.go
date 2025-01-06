@@ -1,0 +1,346 @@
+package blockchain
+
+import (
+	"fmt"
+	"simple_p2p_client/account"
+	"sort"
+	"sync"
+)
+
+type Mempool struct {
+	pending map[string]map[uint64]Transaction
+	future  map[string]map[uint64]Transaction
+	mu      sync.Mutex
+}
+
+var defaultMempool *Mempool
+
+func init() {
+	defaultMempool = &Mempool{
+		pending: make(map[string]map[uint64]Transaction),
+		future:  make(map[string]map[uint64]Transaction),
+	}
+	fmt.Println("Global Mempool initialized")
+}
+
+// 멤풀에 트랜잭션 추가 (Nonce에 따라 pending, future로 나눠서)
+func (mp *Mempool) AddTransaction(tx Transaction, currentNonce uint64) error {
+
+	// DB에서 account 정보 가져옴
+
+	fromAccount, err := account.GetAccount(tx.From)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve account from DB : %v", err)
+	}
+
+	// DB에서 currentNonce를 가져옴
+	dbNonce := fromAccount.Nonce
+
+	fmt.Printf("Current nonce from DB IS : %v", dbNonce)
+
+	// 멤풀 락
+	fmt.Println("Acquiring lock in AddTransaction...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in AddTransaction")
+	defer func() {
+		fmt.Println("Releasing lock in AddTransaction")
+		mp.mu.Unlock()
+	}()
+	// 계정별 맵 초기화
+	if _, exists := mp.pending[tx.From]; !exists {
+		mp.pending[tx.From] = make(map[uint64]Transaction)
+	}
+	if _, exists := mp.future[tx.From]; !exists {
+		mp.future[tx.From] = make(map[uint64]Transaction)
+	}
+
+	// pending에서 from의 마지막 논스 계산
+	highestPendingNonce := dbNonce
+	for nonce := range mp.pending[tx.From] {
+		if nonce > highestPendingNonce {
+			highestPendingNonce = nonce
+		}
+	}
+
+	// highestPendingNonce + 1이면 Pending, 아니면 future에 저장
+	if tx.Nonce == highestPendingNonce+1 {
+		// Pending queue에 저장
+		mp.pending[tx.From][tx.Nonce] = tx
+		fmt.Printf("MEMPOOL : NEW tx is stored in pending ! NONCE IS : %v", tx.Nonce)
+		fmt.Println()
+
+	} else if tx.Nonce > highestPendingNonce {
+		// Future queue에 저장
+		mp.future[tx.From][tx.Nonce] = tx
+		fmt.Printf("MEMPOOL : NEW tx is stored in future ! NONCE IS : %v", tx.Nonce)
+		fmt.Println()
+
+	} else {
+		// db 논스보다 작음
+		return fmt.Errorf("invalid transaction: nonce too low")
+	}
+
+	return nil
+}
+
+// GetPendingTransactions 함수 : 특정 Account의 Pending 트랜잭션 가져오기
+func (mp *Mempool) GetPendingTransactions(account string) []Transaction {
+	fmt.Println("Acquiring lock in GetPendingTransactions...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in GetPendingTransactions")
+	defer func() {
+		fmt.Println("Releasing lock in GetPendingTransactions")
+		mp.mu.Unlock()
+	}()
+	txs := []Transaction{}
+	if pendingTxs, exists := mp.pending[account]; exists {
+		for _, tx := range pendingTxs {
+			txs = append(txs, tx)
+		}
+	}
+	return txs
+}
+
+// PromoteFutureToPending 함수 : Future 트랜잭션을 Pending으로 이동
+func (mp *Mempool) PromoteFutureToPending(account string, currentNonce uint64) {
+	fmt.Println("Acquiring lock in PromoteFutureToPending...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in PromoteFutureToPending")
+	defer func() {
+		fmt.Println("Releasing lock in PromoteFutureToPending")
+		mp.mu.Unlock()
+	}()
+	if futureTxs, exists := mp.future[account]; exists {
+		for nonce, tx := range futureTxs {
+			if nonce == currentNonce+1 {
+				delete(mp.future[account], nonce)
+				mp.pending[account][nonce] = tx
+			}
+		}
+	}
+}
+
+// SelectTransactionsForBlock : 블록 생성시 트랜잭션 선택
+func (mp *Mempool) SelectTransactionsForBlock(account string, currentNonce uint64) ([]Transaction, error) {
+	fmt.Println("Acquiring lock in SelectTransactionsForBlock...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in SelectTransactionsForBlock")
+	defer func() {
+		fmt.Println("Releasing lock in SelectTransactionsForBlock")
+		mp.mu.Unlock()
+	}()
+	blockTxs := []Transaction{}
+
+	// Pending queue에서 트랜잭션 선택
+	if pendingTxs, exists := mp.pending[account]; exists {
+		for nonce := currentNonce + 1; ; nonce++ {
+			tx, exists := pendingTxs[nonce]
+			if !exists {
+				break
+			}
+			blockTxs = append(blockTxs, tx)
+			delete(mp.pending[account], nonce)
+		}
+	}
+	return blockTxs, nil
+}
+
+// func extractTransactionFromMemepool(count int) []Transaction {
+// 	defaultMempool.mu.Lock()
+// 	defer defaultMempool.mu.Unlock()
+
+// 	transactions := make([]Transaction, 0, count)
+// 	i := 0
+
+// 	// 계정별로 pending 트랜잭션을 순회하며 가져옴
+// 	for account, accountTxs := range defaultMempool.pending {
+
+// 		for nonce := range accountTxs {
+// 			if i >= count {
+// 				break
+// 			}
+// 			transactions = append(transactions, accountTxs[nonce])
+// 			delete(accountTxs, nonce) // 멤풀에서 제거
+// 			i++
+
+// 		}
+// 		// 계정 트랜잭션을 모두 처리한 후 비어있으면 삭제
+// 		if len(accountTxs) == 0 {
+// 			delete(defaultMempool.pending, account)
+// 		}
+
+// 		if i >= count {
+// 			break
+// 		}
+
+// 	}
+// 	return transactions
+// }
+
+// 멤풀 정리 :  블록 생성 시도시 유효한 Future를 Pending으로 옮기고 필요없는 트랜잭션 정리
+func (mp *Mempool) CleanMempool() {
+	fmt.Println("Acquiring lock in CleanMempool...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in CleanMempool")
+	defer func() {
+		fmt.Println("Releasing lock in CleanMempool")
+		mp.mu.Unlock()
+	}()
+	for account, futureTxs := range mp.future {
+		if pendingTxs, exists := mp.pending[account]; exists {
+			// 현재 pending 논스 계산
+			currentNonce := uint64(0)
+			for nonce := range pendingTxs {
+				if nonce > currentNonce {
+					currentNonce = nonce
+				}
+			}
+
+			// Future에서 Pending으로 옮기기
+			for nonce, tx := range futureTxs {
+				if nonce == currentNonce+1 {
+					mp.pending[account][nonce] = tx
+					delete(mp.future[account], nonce)
+					currentNonce++
+				}
+			}
+
+			// Future 비우기
+			delete(mp.future, account)
+		}
+	}
+}
+
+// 블록 생성 시도시, 유효한 future 트랜잭션들을 Pending으로 옮기는
+func (mp *Mempool) SyncFutureToPending() {
+	fmt.Println("Acquiring lock in SyncFutureToPending...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in SyncFutureToPending")
+	defer func() {
+		fmt.Println("Releasing lock in SyncFutureToPending")
+		mp.mu.Unlock()
+	}()
+
+	// 멤풀 내 모든 계정 순회
+	for account, futureTxs := range mp.future {
+		pendingTxs, pendingExists := mp.pending[account]
+		if !pendingExists {
+			// pending에는 없다면 초기화
+			pendingTxs = make(map[uint64]Transaction)
+			mp.pending[account] = pendingTxs
+		}
+
+		// Pending에서 가장 높은 nonce 찾기
+		higestPendingNonce := uint64(0)
+		for nonce := range mp.pending[account] {
+			if nonce > higestPendingNonce {
+				higestPendingNonce = nonce
+			}
+		}
+
+		// Future 트랜잭션을 pending으로 이동
+		for nonce := higestPendingNonce + 1; ; nonce++ {
+			tx, exists := futureTxs[nonce]
+			if !exists {
+				break // 연속된 Nonce 없으면 종료
+			}
+
+			// Pending으로 이동
+			pendingTxs[nonce] = tx
+			delete(futureTxs, nonce)
+		}
+
+		// Future에서 해당 계정이 비어있으면 삭제
+		if len(futureTxs) == 0 {
+			delete(mp.future, account)
+		}
+	}
+}
+
+// 라운드로빈(주소별)으로 트랜잭션 추출
+func (mp *Mempool) ExtractTransactionsForBlock(maxTxs int) []Transaction {
+	fmt.Println("뭐여 시발 대체 ")
+
+	fmt.Println("여기까지 오지도 않냐?")
+
+	var blockTxs []Transaction
+
+	accounts := make([]string, 0, len(mp.pending))
+	for account := range mp.pending {
+		accounts = append(accounts, account)
+	}
+
+	fmt.Printf("Accounts in mempool: %v\n", accounts)
+
+	for len(blockTxs) < maxTxs {
+		noMoreTxs := true
+		for _, account := range accounts {
+			if len(blockTxs) >= maxTxs {
+				break
+			}
+
+			pendingTxs := mp.pending[account]
+			if len(pendingTxs) == 0 {
+				fmt.Printf("No transactions for account: %s\n", account)
+				continue
+			}
+
+			noMoreTxs = false
+			nonces := make([]uint64, 0, len(pendingTxs))
+			for nonce := range pendingTxs {
+				nonces = append(nonces, nonce)
+			}
+			sort.Slice(nonces, func(i, j int) bool { return nonces[i] < nonces[j] })
+
+			lowestNonce := nonces[0]
+			fmt.Printf("Extracting transaction with nonce %d for account %s\n", lowestNonce, account)
+
+			blockTxs = append(blockTxs, pendingTxs[lowestNonce])
+			delete(pendingTxs, lowestNonce)
+
+			if len(pendingTxs) == 0 {
+				fmt.Printf("All transactions for account %s processed. Removing from pending.\n", account)
+				delete(mp.pending, account)
+			}
+		}
+
+		if noMoreTxs {
+			fmt.Println("No more transactions available for block.")
+			break
+		}
+	}
+
+	fmt.Printf("Final block transactions: %v\n", blockTxs)
+	return blockTxs
+}
+
+// 블록을 피어로부터 수신 후 검증, 저장, 트랜잭션 실행을 마쳤을 경우, 멤풀에 중복 트랜잭션이 있을 경우 제거
+func (mp *Mempool) CleanMempoolAfterReceiveBlock(blockTxs []Transaction) {
+	fmt.Println("Acquiring lock in CleanMempoolAfterReceiveBlock...")
+	mp.mu.Lock()
+	fmt.Println("Lock acquired in CleanMempoolAfterReceiveBlock")
+	defer func() {
+		fmt.Println("Releasing lock in CleanMempoolAfterReceiveBlock")
+		mp.mu.Unlock()
+	}()
+	for _, tx := range blockTxs {
+
+		// pending 제거
+		if accountTxs, exists := mp.pending[tx.From]; exists {
+			delete(accountTxs, tx.Nonce)
+			// 주소의 pending이 비었을 경우,
+			if len(accountTxs) == 0 {
+				delete(mp.pending, tx.From)
+			}
+		}
+
+		// future 제거
+		if futureTxs, exists := mp.future[tx.From]; exists {
+			delete(futureTxs, tx.Nonce)
+			// 주소 future이 비었을 경우
+			if len(futureTxs) == 0 {
+				delete(mp.future, tx.From)
+			}
+		}
+	}
+}

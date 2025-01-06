@@ -49,6 +49,12 @@ func main() {
 		}
 	}()
 
+	// Blockchain 초기화
+	if err := blockchain.InitGenesisBlock(); err != nil {
+		fmt.Printf("Failed to initialize blockchain: %v\n", err)
+		os.Exit(1)
+	}
+
 	if *mode == "bootnode" {
 		bootnode.StartBootstrapServer()
 
@@ -76,6 +82,8 @@ func main() {
 		fmt.Println("부트스트랩 노드로부터 받은 노드들 주소 :", nodeAddress)
 
 		go blockchain.StartBlockchainProcessor()
+
+		go blockchain.StartBlockCreator()
 
 		// 5. 부트스트랩 노드로 부터 받은 노드들과 피어 연결 시도
 		p2p.StartClient(nodeAddress)

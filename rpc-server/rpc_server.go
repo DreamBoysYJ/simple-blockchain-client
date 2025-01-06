@@ -1,7 +1,6 @@
 package rpcserver
 
 import (
-	"encoding/hex"
 	encodingJson "encoding/json"
 	"fmt"
 
@@ -10,7 +9,6 @@ import (
 	"simple_p2p_client/blockchain"
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/mediator"
-	"simple_p2p_client/p2p"
 	"simple_p2p_client/protocol_constants"
 	"simple_p2p_client/utils"
 	"strconv"
@@ -33,6 +31,17 @@ type SendTransactionArgs struct {
 	To        string `json:"to"`
 	Value     string `json:"value"`
 	Nonce     uint64 `json:"nonce"`
+	Signature string `json:"signature"`
+}
+
+type SendRawTransactionArgs struct {
+	From  string `json:"from"`
+	To    string `json:"to"`
+	Value string `json:"value"`
+	Nonce uint64 `json:"nonce"`
+}
+
+type SendRawTransactionReply struct {
 	Signature string `json:"signature"`
 }
 
@@ -88,66 +97,66 @@ func (s *RpcService) NewAccount(r *http.Request, args *NewAccountArgs, reply *Ne
 	return nil
 }
 
-func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs, reply *SendTransactionReply) error {
+// func (s *RpcService) SendTransaction(r *http.Request, args *SendTransactionArgs, reply *SendTransactionReply) error {
 
-	// 1. Transaction Fields 검증
-	err := blockchain.ValidateTransactionFields(args.From, args.To, args.Value, args.Signature, args.Nonce)
-	if err != nil {
-		return fmt.Errorf("transaction validation failed : %w", err)
-	}
+// 	// 1. Transaction Fields 검증
+// 	err := blockchain.ValidateTransactionFields(args.From, args.To, args.Value, args.Signature, args.Nonce)
+// 	if err != nil {
+// 		return fmt.Errorf("transaction validation failed : %w", err)
+// 	}
 
-	// 2. Sig 검증
+// 	// 2. Sig 검증
 
-	// Transaction message = from,to,value,nonce
+// 	// Transaction message = from,to,value,nonce
 
-	message := fmt.Sprintf("%s%s%s%d", args.From, args.To, args.Value, args.Nonce)
+// 	message := fmt.Sprintf("%s%s%s%d", args.From, args.To, args.Value, args.Nonce)
 
-	messageHash := utils.Keccak256([]byte(message))
+// 	messageHash := utils.Keccak256([]byte(message))
 
-	hexSignature, err := hex.DecodeString(args.Signature)
-	if err != nil {
-		return fmt.Errorf("invalid signature format")
-	}
+// 	hexSignature, err := hex.DecodeString(args.Signature)
+// 	if err != nil {
+// 		return fmt.Errorf("invalid signature format")
+// 	}
 
-	isValidSig, err := blockchain.VerifySignature(messageHash, hexSignature, args.From)
+// 	isValidSig, err := blockchain.VerifySignature(messageHash, hexSignature, args.From)
 
-	if err != nil {
-		return fmt.Errorf("signature verification failed : %v", err)
-	}
-	if !isValidSig {
-		return fmt.Errorf("signature is invalid")
-	}
+// 	if err != nil {
+// 		return fmt.Errorf("signature verification failed : %v", err)
+// 	}
+// 	if !isValidSig {
+// 		return fmt.Errorf("signature is invalid")
+// 	}
 
-	// 3. 계정 상태 확인
+// 	// 3. 계정 상태 확인
 
-	err = account.CheckAccountState(args.From, args.To, args.Value, args.Nonce)
-	if err != nil {
-		return fmt.Errorf("account state validation failed : %v", err)
-	}
+// 	err = account.CheckAccountState(args.From, args.To, args.Value, args.Nonce)
+// 	if err != nil {
+// 		return fmt.Errorf("account state validation failed : %v", err)
+// 	}
 
-	valueBigInt, err := utils.ConvertStringToBigInt(args.Value)
-	if err != nil {
-		return fmt.Errorf("failed to convert value string to int : %v", err)
-	}
+// 	valueBigInt, err := utils.ConvertStringToBigInt(args.Value)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to convert value string to int : %v", err)
+// 	}
 
-	// 4. 트랜잭션 생성
-	tx, jsonRawTransactionStr, err := blockchain.CreateTransaction(args.From, args.To, args.Signature, valueBigInt, args.Nonce)
-	if err != nil {
-		return fmt.Errorf("failed to create transaction : %v", err)
-	}
+// 	// 4. 트랜잭션 생성
+// 	tx, jsonRawTransactionStr, err := blockchain.CreateTransaction(args.From, args.To, args.Signature, valueBigInt, args.Nonce)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to create transaction : %v", err)
+// 	}
 
-	// 5. Mempool에 저장
-	blockchain.AppendToMempool(tx)
+// 	// 5. Mempool에 저장
+// 	blockchain.AppendToMempool(tx)
 
-	// 6. 피어에 jsonRawTransaction 전파
-	fmt.Println("JSON RAW TX ::: ", jsonRawTransactionStr)
-	p2p.HandleSendingMessages(p2p.ConnectedPeers, protocol_constants.P2PTransactionMessage, jsonRawTransactionStr)
+// 	// 6. 피어에 jsonRawTransaction 전파
+// 	fmt.Println("JSON RAW TX ::: ", jsonRawTransactionStr)
+// 	p2p.HandleSendingMessages(p2p.ConnectedPeers, protocol_constants.P2PTransactionMessage, jsonRawTransactionStr)
 
-	// 7. 해시값 반환
+// 	// 7. 해시값 반환
 
-	reply.TxHash = tx.Hash
-	return nil
-}
+// 	reply.TxHash = tx.Hash
+// 	return nil
+// }
 
 func (s *RpcService) RefactorSendTransaction(r *http.Request, args *SendTransactionArgs, reply *SendTransactionReply) error {
 
@@ -207,4 +216,30 @@ func StartRpcServer(port int) {
 		fmt.Printf("Error starting RPC Server: %v\n", err)
 	}
 
+}
+
+func (s *RpcService) SendRawTransaction(r *http.Request, args *SendRawTransactionArgs, reply *SendRawTransactionReply) error {
+
+	// 1. 메시지 생성 (from, to, value, nonce를 연결)
+	message := fmt.Sprintf("%s%s%s%d", args.From, args.To, args.Value, args.Nonce)
+
+	// 2. 메시지 해싱 (Keccak256)
+	messageHash := utils.Keccak256([]byte(message))
+
+	// 3. 개인 키 로드 (개인 키를 안전하게 관리해야 함)
+	privateKeyHex := "7ac125dda168b44ee9fc0d8db3a804ef86b3cc50206a0112b25373d622cf78f7" // 실제 서비스에서는 안전한 방식으로 관리 필요
+	privateKey, err := account.LoadPrivateKey(privateKeyHex)                            // account 패키지에서 개인 키 로드 함수 구현 필요
+	if err != nil {
+		return fmt.Errorf("failed to load private key: %v", err)
+	}
+
+	// 4. 메시지 서명
+	signature, err := account.SignMessage(messageHash, privateKey)
+	if err != nil {
+		return fmt.Errorf("failed to sign transaction: %v", err)
+	}
+
+	// 5. 서명 반환
+	reply.Signature = signature
+	return nil
 }

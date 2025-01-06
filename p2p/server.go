@@ -2,11 +2,9 @@ package p2p
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
-	"simple_p2p_client/blockchain"
 	"simple_p2p_client/mediator"
 	pc "simple_p2p_client/protocol_constants"
 	"simple_p2p_client/utils"
@@ -121,70 +119,71 @@ func StartUDPServer(udpAddress chan<- string, tcpAddress <-chan string, port int
 }
 
 // 받은 메시지 처리 함수
-func HandleIncomingMessages(conn net.Conn) {
-	defer conn.Close()
+// func HandleIncomingMessages(conn net.Conn) {
+// 	defer conn.Close()
 
-	for {
-		message, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				utils.PrintError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
-				ConnectedPeers = utils.RemoveConn(ConnectedPeers, conn)
+// 	for {
+// 		message, err := bufio.NewReader(conn).ReadString('\n')
+// 		if err != nil {
+// 			if err == io.EOF {
+// 				utils.PrintError(fmt.Sprintf("Peer disconnected: %s", conn.RemoteAddr().String()))
+// 				ConnectedPeers = utils.RemoveConn(ConnectedPeers, conn)
 
-			} else {
-				utils.PrintError(fmt.Sprintf("Error reading from peer: %v", err))
-			}
-			return
-		}
-		// 메시지 처리
-		message = strings.TrimSpace(message)
-		if len(message) == 0 {
-			utils.PrintError("Received empty message")
-			continue
-		}
+// 			} else {
+// 				utils.PrintError(fmt.Sprintf("Error reading from peer: %v", err))
+// 			}
+// 			return
+// 		}
+// 		// 메시지 처리
+// 		message = strings.TrimSpace(message)
+// 		if len(message) == 0 {
+// 			utils.PrintError("Received empty message")
+// 			continue
+// 		}
 
-		// 첫 바이트를 프로토콜 ID로 식별
-		protocolID := message[0]
-		messageContent := message[1:]
+// 		// 첫 바이트를 프로토콜 ID로 식별
+// 		protocolID := message[0]
+// 		messageContent := message[1:]
 
-		switch protocolID {
-		case pc.P2PTransactionMessage: // 트랜잭션 수신
-			utils.PrintMessage(fmt.Sprintf("Transaction message received : %s", messageContent))
+// 		switch protocolID {
+// 		case pc.P2PTransactionMessage: // 트랜잭션 수신
+// 			utils.PrintMessage(fmt.Sprintf("Transaction message received : %s", messageContent))
 
-			// 중복 트랜잭션인지 확인
-			var rawTransaction blockchain.RawTransaction
-			err = json.Unmarshal([]byte(messageContent), &rawTransaction)
-			if err != nil {
-				utils.PrintError(fmt.Sprintf("unmarshal message failed :  %v", err))
-				continue
-			}
-			tx, _, _ := blockchain.CreateTransaction(rawTransaction.From, rawTransaction.To, rawTransaction.Signature, rawTransaction.Value, rawTransaction.Nonce)
-			if blockchain.CheckTxInMempool(tx.Hash) {
-				continue
-			}
+// 			// 중복 트랜잭션인지 확인
+// 			var rawTransaction blockchain.RawTransaction
+// 			err = json.Unmarshal([]byte(messageContent), &rawTransaction)
+// 			if err != nil {
+// 				utils.PrintError(fmt.Sprintf("unmarshal message failed :  %v", err))
+// 				continue
+// 			}
+// 			tx, _, _ := blockchain.CreateTransaction(rawTransaction.From, rawTransaction.To, rawTransaction.Signature, rawTransaction.Value, rawTransaction.Nonce)
+// 			if blockchain.CheckTxInMempool(tx.Hash) {
+// 				continue
+// 			}
 
-			// 트랜잭션 검증 및 mempool 저장
-			jsonRawTransactionStr, err := blockchain.ValidateTransaction(messageContent)
-			if err != nil {
-				utils.PrintError(fmt.Sprintf("validate transaction failed: %v", err))
-				continue
+// 			// 트랜잭션 검증 및 mempool 저장
+// 			jsonRawTransactionStr, err := blockchain.ValidateTransaction(messageContent)
+// 			if err != nil {
+// 				utils.PrintError(fmt.Sprintf("validate transaction failed: %v", err))
+// 				continue
 
-			}
-			// 다른 피어에 전달
-			utils.PrintMessage(jsonRawTransactionStr)
-			HandleSendingMessages(ConnectedPeers, pc.P2PTransactionMessage, jsonRawTransactionStr)
+// 			}
+// 			// 다른 피어에 전달
+// 			utils.PrintMessage(jsonRawTransactionStr)
+// 			HandleSendingMessages(ConnectedPeers, pc.P2PTransactionMessage, jsonRawTransactionStr)
 
-		case pc.P2PBlockMessage:
-			utils.PrintMessage(fmt.Sprintf("Block message received : %s", messageContent))
-			// TODO : 블록 처리 절차 추가
+// 		case pc.P2PBlockMessage:
+// 			utils.PrintMessage(fmt.Sprintf("Block message received : %s", messageContent))
+// 			// TODO : 블록 처리 절차 추가
 
-		default: // 일반 메시지 전송
-			utils.PrintMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
+// 		default: // 일반 메시지 전송
+// 			utils.PrintMessage(fmt.Sprintf("Message received from peer : %s from : %s", message, conn.RemoteAddr().String()))
 
-		}
+// 		}
 
-	}
-}
+// 	}
+// }
+
 func RefactorHandleIncomingMessages(conn net.Conn) {
 	defer conn.Close()
 
