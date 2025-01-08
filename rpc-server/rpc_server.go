@@ -85,6 +85,42 @@ type NewAccountReply struct {
 	Address    string
 }
 
+type LastBlockArgs struct {
+}
+
+type LastBlockReply struct {
+	LastBlock blockchain.Block `json:"lastBlock"`
+}
+
+func (s *RpcService) GetLastBlock(r *http.Request, args *LastBlockArgs, reply *LastBlockReply) error {
+	// LevelDB에서 "lastblock" key 조회
+	dbInstance, err := leveldb.GetDBInstance()
+	if err != nil {
+		utils.PrintError("RPC: Failed to get lastblock")
+		return fmt.Errorf("failed to access the database: %v", err)
+	}
+
+	// lastblock 가져오기
+	lastblockData, err := dbInstance.Get([]byte("lastblock"), nil)
+	if err != nil {
+		utils.PrintError("RPC : Failed to retrieve lastblock value")
+		return fmt.Errorf("failed to get lastblock:%v", err)
+	}
+
+	// JSON 문자열을 블록 구조체로 변환
+	var lastBlock blockchain.Block
+	err = encodingJson.Unmarshal(lastblockData, &lastBlock)
+	if err != nil {
+		utils.PrintError("RPC : Failed to unmarshal block data")
+		return fmt.Errorf("failed to parse block data: %v", err)
+	}
+
+	// 응답에 블록 데이터 추가
+	reply.LastBlock = lastBlock
+	return nil
+
+}
+
 func (s *RpcService) NewAccount(r *http.Request, args *NewAccountArgs, reply *NewAccountReply) error {
 
 	privateKey, address, err := account.CreateAccount()
@@ -241,5 +277,35 @@ func (s *RpcService) SendRawTransaction(r *http.Request, args *SendRawTransactio
 
 	// 5. 서명 반환
 	reply.Signature = signature
+	return nil
+}
+
+type GetAccountArgs struct {
+	Address string `json:"address"`
+}
+
+type GetAccountReply struct {
+	Address string `json:"address"`
+	Balance string `json:"balance"`
+	Nonce   uint64 `json:"nonce"`
+}
+
+func (s *RpcService) GetAccountInfo(r *http.Request, args *GetAccountArgs, reply *GetAccountReply) error {
+	// 입력된 주소 유효성 검사
+	if !account.IsValidAddress(args.Address) {
+		return fmt.Errorf("invalid address format: %s", args.Address)
+	}
+
+	// 계정 정보 조회
+	accountData, err := account.GetAccount(args.Address)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve account info: %v", err)
+	}
+
+	// 응답 데이터 설정
+	reply.Address = args.Address
+	reply.Balance = accountData.Balance.String() // big.Int -> 문자열 변환
+	reply.Nonce = accountData.Nonce
+
 	return nil
 }

@@ -40,7 +40,6 @@ func ValidateBlockWithPrevBlock(newBlock *Block) error {
 
 	// timestamp 비교
 	// 이전 블록보다 시간이 큰지
-	// 타임스탬프 검증
 	if newBlock.Timestamp <= lastBlock.Timestamp {
 		return fmt.Errorf("invalid block: timestamp (%d) is not greater than or equal to the previous block's timestamp (%d)", newBlock.Timestamp, lastBlock.Timestamp)
 	}
@@ -81,12 +80,12 @@ func StoreBlock(block *Block) error {
 		return fmt.Errorf("failed to write batch to LevelDB: %w", err)
 	}
 
-	fmt.Printf("Block Stored! number : %v, hash : %v", block.Number, block.Hash)
+	fmt.Printf("[BLOCK] Stored! Number : %v, Hash : %v\n", block.Number, block.Hash)
 	return nil
 
 }
 
-// 블록 구조체 생성
+// 트랜잭션들을 모아 블록 구조체 생성
 func CreateNewBlock(transactions []Transaction) *Block {
 	// 1. 이전 블록 정보 불러오기
 	dbInstance, err := leveldb.GetDBInstance()
@@ -120,8 +119,6 @@ func CreateNewBlock(transactions []Transaction) *Block {
 		transactionHashes = append(transactionHashes, txHash)
 	}
 
-	fmt.Printf("Transaction Hashes in CreateNewBlock: %v\n", transactionHashes)
-
 	// 3. 머클루트 계산
 	merkleRoot, err := BuildMerkleTree(transactionHashes)
 	if err != nil {
@@ -135,22 +132,13 @@ func CreateNewBlock(transactions []Transaction) *Block {
 		ParentHash:  lastBlock.Hash,
 		Timestamp:   uint64(time.Now().Unix()),
 		Transaction: transactions,
-		Miner:       "0x영주", // TODO : 노드를 실행할 때 이 노드를 위한 계정 생성해두기 or 기존 불러오기
+		Miner:       NodeAccount, // 프로그램을 실행하는 노드의 주소
 		MerkleRoot:  merkleRoot,
 	}
 
 	// 5. 블록 해시 계산
 	blockHashData := fmt.Sprintf("%d%s%s%s%d", newBlock.Number, newBlock.ParentHash, merkleRoot, newBlock.Miner, newBlock.Timestamp)
 	newBlock.Hash = utils.BytesToHex(utils.Keccak256([]byte(blockHashData)))
-
-	// // 6. 블록 검증 (추가)
-	// fmt.Println("Validating newly created block...")
-	// err = validateReceivedBlock(newBlock)
-	// if err != nil {
-	// 	utils.PrintError(fmt.Sprintf("Validation failed for created block: %v", err))
-	// 	return nil
-	// }
-	// fmt.Println("Newly created block is valid!")
 
 	return newBlock
 }

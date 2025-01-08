@@ -117,6 +117,33 @@ func StoreAccount(address string) (bool, error) {
 
 }
 
+func StoreAccountForGenesisMiner(address string, initialBalance *big.Int) (bool, error) {
+	dbInstance, err := leveldb.GetDBInstance()
+	if err != nil {
+		// 에러
+		return false, fmt.Errorf("db 접근 불가 : %v", err)
+	}
+	key := append([]byte("account:"), []byte(address)...)
+
+	account := &Account{
+		Balance: initialBalance,
+		Nonce:   0,
+	}
+
+	accountJson, err := json.Marshal(account)
+	if err != nil {
+		return false, fmt.Errorf("json Marshal failed : %v", err)
+	}
+
+	err = dbInstance.Put(key, accountJson, nil)
+	if err != nil {
+		return false, fmt.Errorf("계정 저장 실패 : %v", err)
+	}
+
+	return true, nil
+
+}
+
 func CreateAccount() (string, string, error) {
 
 	// 1. 개인키 생성

@@ -15,7 +15,7 @@ type Mempool struct {
 
 var defaultMempool *Mempool
 
-func init() {
+func InitMempool() {
 	defaultMempool = &Mempool{
 		pending: make(map[string]map[uint64]Transaction),
 		future:  make(map[string]map[uint64]Transaction),
@@ -259,9 +259,6 @@ func (mp *Mempool) SyncFutureToPending() {
 
 // 라운드로빈(주소별)으로 트랜잭션 추출
 func (mp *Mempool) ExtractTransactionsForBlock(maxTxs int) []Transaction {
-	fmt.Println("뭐여 시발 대체 ")
-
-	fmt.Println("여기까지 오지도 않냐?")
 
 	var blockTxs []Transaction
 
@@ -269,8 +266,6 @@ func (mp *Mempool) ExtractTransactionsForBlock(maxTxs int) []Transaction {
 	for account := range mp.pending {
 		accounts = append(accounts, account)
 	}
-
-	fmt.Printf("Accounts in mempool: %v\n", accounts)
 
 	for len(blockTxs) < maxTxs {
 		noMoreTxs := true

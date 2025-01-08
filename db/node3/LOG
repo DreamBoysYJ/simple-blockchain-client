@@ -1,18 +1,6 @@
-=============== Jan 6, 2025 (KST) ===============
-23:46:59.226338 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-23:46:59.254739 db@open opening
-23:46:59.255247 version@stat F·[] S·0B[] Sc·[]
-23:46:59.263809 db@janitor F·2 G·0
-23:46:59.263855 db@open done T·9.089833ms
-23:46:59.264089 db@close closing
-23:46:59.264163 db@close done T·71.667µs
-=============== Jan 6, 2025 (KST) ===============
-23:47:14.990334 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-23:47:14.992099 version@stat F·[] S·0B[] Sc·[]
-23:47:14.992130 db@open opening
-23:47:14.992177 journal@recovery F·1
-23:47:14.992407 journal@recovery recovering @1
-23:47:15.002082 memdb@flush created L0@2 N·2 S·205B "acc..679,v2":"acc..679,v1"
-23:47:15.002390 version@stat F·[1] S·205B[205B] Sc·[0.25]
-23:47:15.018334 db@janitor F·3 G·0
-23:47:15.018392 db@open done T·26.252042ms
+=============== Jan 8, 2025 (KST) ===============
+22:25:57.108700 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
+22:25:57.128694 db@open opening
+22:25:57.129265 version@stat F·[] S·0B[] Sc·[]
+22:25:57.137616 db@janitor F·2 G·0
+22:25:57.137640 db@open done T·8.921541ms

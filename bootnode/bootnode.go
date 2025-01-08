@@ -97,7 +97,7 @@ func StartBootstrapServer() {
 		return
 	}
 
-	fmt.Println("Bootstrap Node is listening on port:", fmt.Sprintf("%s:%d", addr.IP.String(), addr.Port))
+	fmt.Println("[BootNode] UDP server is listening on :::", fmt.Sprintf("%s:%d", addr.IP.String(), addr.Port))
 
 	defer conn.Close()
 

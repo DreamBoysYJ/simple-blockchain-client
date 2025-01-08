@@ -49,16 +49,25 @@ func main() {
 		}
 	}()
 
-	// Blockchain 초기화
-	if err := blockchain.InitGenesisBlock(); err != nil {
-		fmt.Printf("Failed to initialize blockchain: %v\n", err)
-		os.Exit(1)
-	}
-
 	if *mode == "bootnode" {
 		bootnode.StartBootstrapServer()
 
 	} else if *mode == "fullnode" {
+
+		// 노드 계정 초기화
+		if err := blockchain.InitializeNodeAccount(); err != nil {
+			fmt.Printf("노드 계정 초기화 실패 : %v\n", err)
+			os.Exit(1)
+		}
+
+		// Blockchain 초기화
+		if err := blockchain.InitGenesisBlock(); err != nil {
+			fmt.Printf("Failed to initialize blockchain: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Mempool 초기화
+		blockchain.InitMempool()
 
 		// RPC 서버 시작
 		go rpcserver.StartRpcServer(*rpcPort)
