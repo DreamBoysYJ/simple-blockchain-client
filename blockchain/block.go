@@ -3,6 +3,8 @@ package blockchain
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"simple_p2p_client/account"
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/utils"
 	"strings"
@@ -80,7 +82,7 @@ func StoreBlock(block *Block) error {
 		return fmt.Errorf("failed to write batch to LevelDB: %w", err)
 	}
 
-	fmt.Printf("[BLOCK] Stored! Number : %v, Hash : %v\n", block.Number, block.Hash)
+	fmt.Printf("[BLOCK] Stored, Number : %v, Hash : %v\n", block.Number, block.Hash)
 	return nil
 
 }
@@ -145,13 +147,15 @@ func CreateNewBlock(transactions []Transaction) *Block {
 
 // 블록 유효성 검증
 func validateReceivedBlock(block *Block) error {
-	fmt.Println("Starting block validation...")
+	fmt.Println("[BLOCK] Starting Validation...")
 
 	// 1. 이전 블록 해시 검증
 	err := ValidateBlockWithPrevBlock(block)
 	if err != nil {
 		return fmt.Errorf("parent block hash mismatch : %v", err)
 	}
+
+	fmt.Println("[BLOCK] Validated against the Previous block")
 
 	// 2. 현재 블록 해시 검증
 	blockHashData := fmt.Sprintf("%d%s%s%s%d", block.Number, block.ParentHash, block.MerkleRoot, block.Miner, block.Timestamp)
@@ -160,6 +164,8 @@ func validateReceivedBlock(block *Block) error {
 		// TODO : 상대방에게 알리기
 		return fmt.Errorf("invalid block hash : expected : %s, got %s", expectedHash, block.Hash)
 	}
+
+	fmt.Println("[BLOCK] Validated the hash of this block")
 
 	// 3. 머클루트 검증
 	var transactionHashes []string
@@ -175,6 +181,10 @@ func validateReceivedBlock(block *Block) error {
 		return fmt.Errorf("invalid Merkle root : expected %s, got %s", calculatedMerkleRoot, block.MerkleRoot)
 	}
 
+	fmt.Println("[BLOCK] Validated the merkleroot of this block")
+
+	fmt.Println("[BLOCK] Starting validation of transactions in this block...")
+
 	// 4. 블록 내 트랜잭션 검증
 	for _, tx := range block.Transaction {
 
@@ -182,7 +192,53 @@ func validateReceivedBlock(block *Block) error {
 		if err != nil {
 			return fmt.Errorf("transaction validation failed for tx %s: %v", tx.Hash, err)
 		}
+
 	}
 
+	return nil
+}
+
+// 블록 Miner에게 보상 지급
+func RewardToMiner(minerAddress string) error {
+
+	const rewardAmount = 1000
+	rewardBigInt := big.NewInt(rewardAmount)
+
+	// 주소 유효성 검증
+	if !account.IsValidAddress(minerAddress) {
+		return fmt.Errorf("invalid miner address : %s", minerAddress)
+	}
+
+	// Miner 계정 존재하는지 확인
+	minerExists, err := account.AccountExists(minerAddress)
+	if err != nil {
+		return fmt.Errorf("failed to check miner account existence : %v", err)
+	}
+
+	// 없는 계정이면 db에 저장
+	if !minerExists {
+		_, err := account.StoreAccount(minerAddress)
+		if err != nil {
+			return fmt.Errorf("failed to create miner account : %v", err)
+		}
+	}
+
+	// 계정 불러오기
+
+	minerAccount, err := account.GetAccount(minerAddress)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve miner account : %v", err)
+	}
+
+	// 잔액 업데이트
+	minerAccount.Balance.Add(minerAccount.Balance, rewardBigInt)
+
+	// 업데이트 된 계정 저장
+	err = account.UpdateAccount(minerAddress, minerAccount)
+	if err != nil {
+		return fmt.Errorf("failed to update miner account: %v", err)
+	}
+
+	fmt.Printf("[BLOCK CREATOR] Rewarded %d to miner : %s\n", rewardAmount, minerAddress)
 	return nil
 }

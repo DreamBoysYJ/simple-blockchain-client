@@ -1,9 +1,13 @@
 package blockchain
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"simple_p2p_client/account"
 	"simple_p2p_client/leveldb"
+
+	db "github.com/syndtr/goleveldb/leveldb"
 )
 
 var NodeAccount string // 프로그램을 실행하는 노드의 주소
@@ -32,13 +36,29 @@ func InitializeNodeAccount() error {
 		return fmt.Errorf("노드 게정 생성 실패 : %v", err)
 	}
 
-	// 새 계정 저장
-	err = dbInstance.Put([]byte(nodeAccountKey), []byte(address), nil)
+	// 새 계정 데이터 준비
+	accountInfo := account.Account{
+		Balance: big.NewInt(0),
+		Nonce:   0,
+	}
+
+	accountJSON, err := json.Marshal(accountInfo)
 	if err != nil {
-		return fmt.Errorf("노드 계정 저장 실패 : %v", err)
+		return fmt.Errorf("failed to marshal accountInfo : %v", err)
+	}
+
+	// batch 생성
+	batch := new(db.Batch)
+	batch.Put([]byte(nodeAccountKey), []byte(address))
+	batch.Put([]byte("account:"+address), accountJSON)
+
+	// 배치 실행
+	err = dbInstance.Write(batch, nil)
+	if err != nil {
+		return fmt.Errorf("배치 작업 저장 실패 : %v", err)
 	}
 
 	NodeAccount = address
-	fmt.Printf("새로운 노드 계정 생성 : %s\n", NodeAccount)
+	fmt.Printf("[ACCOUNT] New Account for node created : %s\n", NodeAccount)
 	return nil
 }

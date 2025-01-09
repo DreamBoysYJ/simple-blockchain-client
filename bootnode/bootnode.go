@@ -142,7 +142,7 @@ func StartBootstrapServer() {
 			// 노드를 노드 주소 리스트에 추가
 			connectedNodes = append(connectedNodes, nodeInfo)
 			// fmt.Printf("Saved nodeInfo complete", nodeInfo)
-			fmt.Println("Saved nodeInfo complete")
+			fmt.Printf("Saved nodeInfo, Nodelists : %v\n", connectedNodes)
 
 		}
 	}

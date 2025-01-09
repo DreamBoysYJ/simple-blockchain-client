@@ -41,7 +41,7 @@ func StartClient(nodeAddress []string) {
 			}
 
 			// 1. Send Ping
-			fmt.Println("Sending Ping to node")
+			fmt.Printf("[Node Discovery] Sending 'Ping' to node : %v\n", nodeUDPAddr)
 			pingMessage := []byte{pc.NodeDiscoveryPing}
 			_, err = conn.Write(pingMessage)
 			if err != nil {
@@ -59,8 +59,10 @@ func StartClient(nodeAddress []string) {
 			}
 			// 3. Send ENRRequest
 			if buffer[0] == pc.NodeDiscoveryPong {
-				fmt.Println("Received Pong message")
-				fmt.Println("Sending ENRRequest")
+				fmt.Printf("[Node Discovery] Received 'Pong' from node : %v\n", nodeUDPAddr)
+
+				fmt.Printf("[Node Discovery] Sending 'ENRRequest' from node : %v\n", nodeUDPAddr)
+
 				_, err = conn.Write([]byte{pc.NodeDiscoveryENRRequest})
 				if err != nil {
 					utils.PrintError(fmt.Sprintf("Error sending ENRRequest : %v", err))
@@ -76,8 +78,11 @@ func StartClient(nodeAddress []string) {
 				}
 
 				if buffer[0] == pc.NodeDiscoveryENRResponse {
+					fmt.Printf("[Node Discovery] Received 'ENRResponse' from node : %v\n", nodeUDPAddr)
+					fmt.Printf("[Node Discovery] TCP server : %v\n", nodeUDPAddr)
+
 					tcpServer := string(buffer[1:n])
-					fmt.Println("TCP SERVER :::", tcpServer)
+					fmt.Printf("[Node Discovery] TCP server : %v, dialing...\n", tcpServer)
 
 					// 5. TCP 연결
 					conn, err := net.Dial("tcp", tcpServer)
@@ -85,7 +90,7 @@ func StartClient(nodeAddress []string) {
 						utils.PrintError(fmt.Sprintf("Error reading from connection : %v", err))
 
 					} else {
-						fmt.Println("Successfully connected to", tcpServer)
+						fmt.Printf("[Node Discovery] Successfully connected to node,  %v\n", tcpServer)
 						ConnectedPeers = append(ConnectedPeers, conn)
 					}
 
@@ -106,7 +111,7 @@ func StartClient(nodeAddress []string) {
 	// 메시지 입력 고루틴
 	go func() {
 		for {
-			fmt.Print("Enter Message : ")
+			fmt.Println("Enter Message : ")
 			message, _ := reader.ReadString('\n')
 			message = strings.TrimSpace(message)
 			messageChannel <- message
@@ -133,7 +138,7 @@ func StartClient(nodeAddress []string) {
 			protocolID := processedMessage[0]
 			messageContent := processedMessage[1:]
 
-			utils.PrintMessage(fmt.Sprintf("Forwarding processed message to peers: %s", processedMessage))
+			utils.PrintMessage(fmt.Sprintf("[P2P] Forwarding message to peers: %s", processedMessage))
 			HandleSendingMessages(ConnectedPeers, protocolID, messageContent)
 		}
 	}()

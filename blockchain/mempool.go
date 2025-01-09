@@ -20,7 +20,7 @@ func InitMempool() {
 		pending: make(map[string]map[uint64]Transaction),
 		future:  make(map[string]map[uint64]Transaction),
 	}
-	fmt.Println("Global Mempool initialized")
+	fmt.Println("[Mempool] Initialized...")
 }
 
 // 멤풀에 트랜잭션 추가 (Nonce에 따라 pending, future로 나눠서)
@@ -36,14 +36,14 @@ func (mp *Mempool) AddTransaction(tx Transaction, currentNonce uint64) error {
 	// DB에서 currentNonce를 가져옴
 	dbNonce := fromAccount.Nonce
 
-	fmt.Printf("Current nonce from DB IS : %v", dbNonce)
+	// fmt.Printf("Current nonce from DB IS : %v", dbNonce)
 
 	// 멤풀 락
-	fmt.Println("Acquiring lock in AddTransaction...")
+	// fmt.Println("Acquiring lock in AddTransaction...")
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in AddTransaction")
+	// fmt.Println("Lock acquired in AddTransaction")
 	defer func() {
-		fmt.Println("Releasing lock in AddTransaction")
+		// fmt.Println("Releasing lock in AddTransaction")
 		mp.mu.Unlock()
 	}()
 	// 계정별 맵 초기화
@@ -52,6 +52,14 @@ func (mp *Mempool) AddTransaction(tx Transaction, currentNonce uint64) error {
 	}
 	if _, exists := mp.future[tx.From]; !exists {
 		mp.future[tx.From] = make(map[uint64]Transaction)
+	}
+
+	// 중복 확인: pending과 future에 이미 존재하는 논스인지 확인
+	if _, exists := mp.pending[tx.From][tx.Nonce]; exists {
+		return fmt.Errorf("duplicate transaction: nonce %v already exists in pending", tx.Nonce)
+	}
+	if _, exists := mp.future[tx.From][tx.Nonce]; exists {
+		return fmt.Errorf("duplicate transaction: nonce %v already exists in future", tx.Nonce)
 	}
 
 	// pending에서 from의 마지막 논스 계산
@@ -66,13 +74,13 @@ func (mp *Mempool) AddTransaction(tx Transaction, currentNonce uint64) error {
 	if tx.Nonce == highestPendingNonce+1 {
 		// Pending queue에 저장
 		mp.pending[tx.From][tx.Nonce] = tx
-		fmt.Printf("MEMPOOL : NEW tx is stored in pending ! NONCE IS : %v", tx.Nonce)
+		fmt.Printf("[Mempool] : tx is stored in pending, nonce is : %v\n", tx.Nonce)
 		fmt.Println()
 
 	} else if tx.Nonce > highestPendingNonce {
 		// Future queue에 저장
 		mp.future[tx.From][tx.Nonce] = tx
-		fmt.Printf("MEMPOOL : NEW tx is stored in future ! NONCE IS : %v", tx.Nonce)
+		fmt.Printf("[Mempool] : tx is stored in future, nonce is : %v\n", tx.Nonce)
 		fmt.Println()
 
 	} else {
@@ -85,11 +93,11 @@ func (mp *Mempool) AddTransaction(tx Transaction, currentNonce uint64) error {
 
 // GetPendingTransactions 함수 : 특정 Account의 Pending 트랜잭션 가져오기
 func (mp *Mempool) GetPendingTransactions(account string) []Transaction {
-	fmt.Println("Acquiring lock in GetPendingTransactions...")
+
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in GetPendingTransactions")
+
 	defer func() {
-		fmt.Println("Releasing lock in GetPendingTransactions")
+
 		mp.mu.Unlock()
 	}()
 	txs := []Transaction{}
@@ -103,11 +111,11 @@ func (mp *Mempool) GetPendingTransactions(account string) []Transaction {
 
 // PromoteFutureToPending 함수 : Future 트랜잭션을 Pending으로 이동
 func (mp *Mempool) PromoteFutureToPending(account string, currentNonce uint64) {
-	fmt.Println("Acquiring lock in PromoteFutureToPending...")
+
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in PromoteFutureToPending")
+
 	defer func() {
-		fmt.Println("Releasing lock in PromoteFutureToPending")
+
 		mp.mu.Unlock()
 	}()
 	if futureTxs, exists := mp.future[account]; exists {
@@ -122,11 +130,11 @@ func (mp *Mempool) PromoteFutureToPending(account string, currentNonce uint64) {
 
 // SelectTransactionsForBlock : 블록 생성시 트랜잭션 선택
 func (mp *Mempool) SelectTransactionsForBlock(account string, currentNonce uint64) ([]Transaction, error) {
-	fmt.Println("Acquiring lock in SelectTransactionsForBlock...")
+
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in SelectTransactionsForBlock")
+
 	defer func() {
-		fmt.Println("Releasing lock in SelectTransactionsForBlock")
+
 		mp.mu.Unlock()
 	}()
 	blockTxs := []Transaction{}
@@ -145,45 +153,13 @@ func (mp *Mempool) SelectTransactionsForBlock(account string, currentNonce uint6
 	return blockTxs, nil
 }
 
-// func extractTransactionFromMemepool(count int) []Transaction {
-// 	defaultMempool.mu.Lock()
-// 	defer defaultMempool.mu.Unlock()
-
-// 	transactions := make([]Transaction, 0, count)
-// 	i := 0
-
-// 	// 계정별로 pending 트랜잭션을 순회하며 가져옴
-// 	for account, accountTxs := range defaultMempool.pending {
-
-// 		for nonce := range accountTxs {
-// 			if i >= count {
-// 				break
-// 			}
-// 			transactions = append(transactions, accountTxs[nonce])
-// 			delete(accountTxs, nonce) // 멤풀에서 제거
-// 			i++
-
-// 		}
-// 		// 계정 트랜잭션을 모두 처리한 후 비어있으면 삭제
-// 		if len(accountTxs) == 0 {
-// 			delete(defaultMempool.pending, account)
-// 		}
-
-// 		if i >= count {
-// 			break
-// 		}
-
-// 	}
-// 	return transactions
-// }
-
 // 멤풀 정리 :  블록 생성 시도시 유효한 Future를 Pending으로 옮기고 필요없는 트랜잭션 정리
 func (mp *Mempool) CleanMempool() {
-	fmt.Println("Acquiring lock in CleanMempool...")
+
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in CleanMempool")
+
 	defer func() {
-		fmt.Println("Releasing lock in CleanMempool")
+
 		mp.mu.Unlock()
 	}()
 	for account, futureTxs := range mp.future {
@@ -213,11 +189,11 @@ func (mp *Mempool) CleanMempool() {
 
 // 블록 생성 시도시, 유효한 future 트랜잭션들을 Pending으로 옮기는
 func (mp *Mempool) SyncFutureToPending() {
-	fmt.Println("Acquiring lock in SyncFutureToPending...")
+
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in SyncFutureToPending")
+
 	defer func() {
-		fmt.Println("Releasing lock in SyncFutureToPending")
+
 		mp.mu.Unlock()
 	}()
 
@@ -288,13 +264,13 @@ func (mp *Mempool) ExtractTransactionsForBlock(maxTxs int) []Transaction {
 			sort.Slice(nonces, func(i, j int) bool { return nonces[i] < nonces[j] })
 
 			lowestNonce := nonces[0]
-			fmt.Printf("Extracting transaction with nonce %d for account %s\n", lowestNonce, account)
+			fmt.Printf("[Mempool] Extracting transaction with nonce %d for account %s\n", lowestNonce, account)
 
 			blockTxs = append(blockTxs, pendingTxs[lowestNonce])
 			delete(pendingTxs, lowestNonce)
 
 			if len(pendingTxs) == 0 {
-				fmt.Printf("All transactions for account %s processed. Removing from pending.\n", account)
+				// fmt.Printf("All transactions for account %s processed. Removing from pending.\n", account)
 				delete(mp.pending, account)
 			}
 		}
@@ -311,11 +287,11 @@ func (mp *Mempool) ExtractTransactionsForBlock(maxTxs int) []Transaction {
 
 // 블록을 피어로부터 수신 후 검증, 저장, 트랜잭션 실행을 마쳤을 경우, 멤풀에 중복 트랜잭션이 있을 경우 제거
 func (mp *Mempool) CleanMempoolAfterReceiveBlock(blockTxs []Transaction) {
-	fmt.Println("Acquiring lock in CleanMempoolAfterReceiveBlock...")
+
 	mp.mu.Lock()
-	fmt.Println("Lock acquired in CleanMempoolAfterReceiveBlock")
+
 	defer func() {
-		fmt.Println("Releasing lock in CleanMempoolAfterReceiveBlock")
+
 		mp.mu.Unlock()
 	}()
 	for _, tx := range blockTxs {

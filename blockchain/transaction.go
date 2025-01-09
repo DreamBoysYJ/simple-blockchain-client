@@ -42,11 +42,11 @@ func VerifySignature(messageHash []byte, signature []byte, fromAddress string) (
 	}
 
 	// 공개키를 바이트 배열로 변환 (압축되지 않은 형식)
-	fmt.Printf("Recovered public key (uncompressed): %x\n", pubKey)
+	// fmt.Printf("Recovered public key (uncompressed): %x\n", pubKey)
 
 	// 복구된 공개키로부터 주소 생성
 	address, err := account.PublicKeyToAddress(pubKey)
-	fmt.Printf("Address: %s\n", address)
+	// fmt.Printf("Address: %s\n", address)
 
 	if err != nil {
 		return false, fmt.Errorf("failed to create address from public key : %v", err)
@@ -174,6 +174,8 @@ func ProcessTransaction(rawTransactionMessage string) (string, error) {
 		return "", fmt.Errorf("failed to append transaction to mempool: %v", err)
 	}
 
+	fmt.Printf("[TX] Validation completes, Hash : %v", tx.Hash)
+
 	// 7. 반환
 	return jsonRawTransactionStr, nil
 }
@@ -185,9 +187,10 @@ func ExecuteTransactions(transactions []Transaction) error {
 		return fmt.Errorf("failed to get dbinstance : %v", err)
 	}
 
-	batch := new(db.Batch)
-
 	for _, tx := range transactions {
+
+		batch := new(db.Batch)
+
 		// 1. From 가져오기
 		fromAccount, err := account.GetAccount(tx.From)
 		if err != nil {
@@ -235,13 +238,16 @@ func ExecuteTransactions(transactions []Transaction) error {
 		batch.Put(fromAccountKey, fromAccountJSON)
 		batch.Put(toAccountKey, toAccountJSON)
 
+		// 5. 배치 실행
+		err = dbInstance.Write(batch, nil)
+		if err != nil {
+			return fmt.Errorf("failed to execute batch write : %v", err)
+		}
+
+		fmt.Printf("[TX] Execution completed, Hash : %s, From : %s, To: %s, Value : %s", tx.Hash, tx.From, tx.To, tx.Value)
+
 	}
 
-	// 5. 배치 실행
-	err = dbInstance.Write(batch, nil)
-	if err != nil {
-		return fmt.Errorf("failed to execute batch write : %v", err)
-	}
 	return nil
 }
 
@@ -270,6 +276,8 @@ func ProcessTransactionFromBlock(tx Transaction) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("transaction state validation failed : %v", err)
 	}
+
+	fmt.Printf("[TX] Validation compeleted, hash : %v\n", tx.Hash)
 
 	// 4. 성공적으로 검증된 트랜잭션 반환
 	return tx.Hash, nil

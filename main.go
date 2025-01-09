@@ -88,7 +88,7 @@ func main() {
 			utils.PrintError(fmt.Sprintf("Failed to connect to bootstrap node: %v", err))
 			return
 		}
-		fmt.Println("부트스트랩 노드로부터 받은 노드들 주소 :", nodeAddress)
+		fmt.Println("[Node Discovery] Peer addresses from bootnode :", nodeAddress)
 
 		go blockchain.StartBlockchainProcessor()
 

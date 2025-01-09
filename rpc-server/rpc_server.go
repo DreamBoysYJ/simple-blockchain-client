@@ -226,7 +226,7 @@ func (s *RpcService) RefactorSendTransaction(r *http.Request, args *SendTransact
 	transactionHash := utils.Keccak256Hex(rawTransactionBytes)
 	reply.TxHash = transactionHash
 
-	fmt.Println("Transaction sent to mediator. Hash:", transactionHash)
+	// fmt.Println("Transaction sent to mediator. Hash:", transactionHash)
 	return nil
 
 }
@@ -246,11 +246,11 @@ func StartRpcServer(port int) {
 	http.Handle("/rpc", server)
 
 	// Start Server
-	fmt.Printf("Starting RPC Server on Port %d\n", port)
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
 		fmt.Printf("Error starting RPC Server: %v\n", err)
 	}
+	fmt.Printf("[RPC] Server is listening on : %d\n", port)
 
 }
 

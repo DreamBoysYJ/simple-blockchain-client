@@ -246,3 +246,25 @@ func SignMessage(hash []byte, privateKey *ecdsa.PrivateKey) (string, error) {
 	}
 	return hex.EncodeToString(signature), nil
 }
+
+// 해당 주소 계정의 상태 업데이트
+func UpdateAccount(address string, account *Account) error {
+	dbInstance, err := leveldb.GetDBInstance()
+	if err != nil {
+		return fmt.Errorf("db 접근 불가 : %v", err)
+	}
+
+	accountJson, err := json.Marshal(account)
+	if err != nil {
+		return fmt.Errorf("json Marshal 실패 : %v", err)
+	}
+
+	key := append([]byte("account:"), []byte(address)...)
+
+	err = dbInstance.Put(key, accountJson, nil)
+	if err != nil {
+		return fmt.Errorf("계정 업데이트 실패 : %v", err)
+	}
+
+	return nil
+}

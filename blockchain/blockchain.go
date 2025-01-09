@@ -56,7 +56,8 @@ func InitGenesisBlock() error {
 	if err != nil || !success {
 		return fmt.Errorf("failed to init miner account: %v", err)
 	}
-	fmt.Printf("[BLOCK] Miner account initialized with address : %s, balance : %s\n ", genesisBlock.Miner, initialBalance.String())
+	fmt.Printf("[BLOCK] Genesisblock miner initialized, address : %s, balance : %s", genesisBlock.Miner, initialBalance.String())
+	fmt.Println("")
 
 	// 제네시스 블록 LevelDB에 저장
 	blockJSON, err := json.Marshal(genesisBlock)
@@ -73,6 +74,8 @@ func InitGenesisBlock() error {
 		return fmt.Errorf("failed to store genesis block in DB: %v", err)
 
 	}
+
+	fmt.Printf("[BLOCK] Genesis block created, hash: %s\n", genesisBlock.Hash)
 
 	return nil
 }
@@ -102,7 +105,7 @@ func StartBlockchainProcessor() {
 				// 트랜잭션 처리 (검증 및 멤풀 저장)
 				processedMessage, err := ProcessTransaction(messageContent)
 				if err != nil {
-					fmt.Printf("Transaction validation failed : %v\n", err)
+					fmt.Printf("[TX] Validation failed : %v\n", err)
 					continue
 				}
 				// Blockchain => p2p 전달
@@ -123,8 +126,16 @@ func StartBlockchainProcessor() {
 				// 2. 블록 검증
 				err = validateReceivedBlock(&receivedBlock)
 				if err != nil {
-					fmt.Printf("Block validation failed : %v\n", err)
+					fmt.Printf("[BLOCK] Validation failed : %v\n", err)
 					continue
+				}
+
+				fmt.Println("[BLOCK] Validation completes!")
+
+				// Miner 보상 지금
+				err = RewardToMiner(receivedBlock.Miner)
+				if err != nil {
+					fmt.Printf("Failed to reward miner : %v\n", err)
 				}
 
 				// 3. 블록 저장
@@ -141,7 +152,7 @@ func StartBlockchainProcessor() {
 					fmt.Printf("Failed to execute transaction: %v\n", err)
 					// TODO : 트랜잭션이 실패될 경우 블록 저장을 어떻게 롤백할 것인가
 				}
-				fmt.Printf("[TX] Execution completes  : %v\n", receivedBlock.Transaction)
+				fmt.Println("[TX] Execution transactions in this block completed")
 
 				// 5. 멤풀에서 이미 처리한 트랜잭션 제거
 				defaultMempool.CleanMempoolAfterReceiveBlock(receivedBlock.Transaction)
@@ -174,7 +185,7 @@ func StartBlockCreator() {
 	for range ticker.C {
 		fmt.Println("[BLOCK CREATOR] Start trying to create block")
 		defaultMempool.SyncFutureToPending()
-		fmt.Println("[Mempool] Sync complete, pending :", defaultMempool.pending)
+		fmt.Println("[Mempool] Sync complete")
 
 		defaultMempool.mu.Lock()
 		totalTransactions := 0
@@ -229,11 +240,17 @@ func StartBlockCreator() {
 		}
 		fmt.Printf("[BLOCK CREATOR] Transactions executed : %v\n", newBlock.Transaction)
 
+		// Miner 보상 지금
+		err = RewardToMiner(newBlock.Miner)
+		if err != nil {
+			fmt.Printf("Failed to reward miner : %v\n", err)
+		}
+
 		// 블록을 채널에 전달 (피어에게 전파)
 
 		mediatorInstance := mediator.GetMediatorInstance()
 		message := fmt.Sprintf("%c%s", protocol_constants.P2PBlockMessage, string(blockJSON))
-		fmt.Printf("[BLOCK CREATOR] Sends message to BlockchainToP2P channel: %s\n", message)
+		fmt.Printf("[BLOCK CREATOR] Forwarding to broadcast block to peers: %s\n", message)
 
 		mediatorInstance.BlockchainToP2P <- message
 	}

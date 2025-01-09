@@ -21,22 +21,22 @@ func ConnectBootstrapNode(bootstrapAddress string, udpServerAddress string) ([]s
 	// net.ResolveUDPAddr(network,address) : UDP 주소 객체 변환
 	bootstrapUDPAddr, err := net.ResolveUDPAddr("udp", bootstrapAddress)
 	if err != nil {
-		return nodeLists, fmt.Errorf("Error resolving UDP addres : %v", err)
+		return nodeLists, fmt.Errorf("error resolving UDP addres : %v", err)
 	}
 
 	// DialUDP : 로컬 소켓 생성 (TCP는 실제 연결까지 진행)
 	conn, err := net.DialUDP("udp", nil, bootstrapUDPAddr)
 	if err != nil {
-		return nodeLists, fmt.Errorf("Error connecting to bootstrap node : %v", err)
+		return nodeLists, fmt.Errorf("error connecting to bootstrap node : %v", err)
 	}
 	defer conn.Close()
 
 	// 1. Send Ping
-	fmt.Println("Sending Ping to bootstrap node")
+	fmt.Println("[Node Discovery] Sending 'Ping' to bootnode")
 	pingMessage := []byte{pc.NodeDiscoveryPing}
 	_, err = conn.Write(pingMessage)
 	if err != nil {
-		return nodeLists, fmt.Errorf("Error sending Ping message : %v", err)
+		return nodeLists, fmt.Errorf("error sending Ping message : %v", err)
 	}
 
 	// 2. Waiting Pong
@@ -44,24 +44,24 @@ func ConnectBootstrapNode(bootstrapAddress string, udpServerAddress string) ([]s
 	buffer := make([]byte, 1024)
 	n, _, err := conn.ReadFromUDP(buffer)
 	if err != nil {
-		return nodeLists, fmt.Errorf("Error receiving Pong message : %v", err)
+		return nodeLists, fmt.Errorf("error receiving 'Pong' : %v", err)
 	}
 
 	// 3. Send FindNode
 	if buffer[0] == pc.NodeDiscoveryPong {
-		fmt.Println("Received Pong message")
-		fmt.Println("Sending FindNode message to bootstrap node")
+		fmt.Println("[Node Discovery] Received 'Pong' from bootnode")
+		fmt.Println("[Node Discovery] Sending 'FindNode' to bootnode")
 		findNodeMessage := append([]byte{pc.NodeDiscoveryFindNode}, []byte(udpServerAddress)...)
 		_, err = conn.Write(findNodeMessage)
 		if err != nil {
-			return nodeLists, fmt.Errorf("Error sending FindNode message : %v", err)
+			return nodeLists, fmt.Errorf("error sending FindNode message : %v", err)
 		}
 
 		// 4. Waiting Neighbors
 		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		n, _, err = conn.ReadFromUDP(buffer)
 		if err != nil {
-			return nodeLists, fmt.Errorf("Error receiving Neighbors message : %v", err)
+			return nodeLists, fmt.Errorf("error receiving Neighbors message : %v", err)
 		}
 
 		if buffer[0] == pc.NodeDiscoveryNeighbors {
@@ -71,11 +71,11 @@ func ConnectBootstrapNode(bootstrapAddress string, udpServerAddress string) ([]s
 			return nodeLists, nil
 
 		} else {
-			return nodeLists, fmt.Errorf("Did not receive Neighbors message")
+			return nodeLists, fmt.Errorf("did not receive Neighbors message")
 		}
 
 	} else {
-		return nodeLists, fmt.Errorf("Did not receive Pong message")
+		return nodeLists, fmt.Errorf("did not receive Pong message")
 	}
 
 }
