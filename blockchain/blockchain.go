@@ -108,6 +108,7 @@ func StartBlockchainProcessor() {
 					fmt.Printf("[TX] Validation failed : %v\n", err)
 					continue
 				}
+				
 				// Blockchain => p2p 전달
 				mediatorInstance.BlockchainToP2P <- fmt.Sprintf("%c%s", 0x01, processedMessage)
 

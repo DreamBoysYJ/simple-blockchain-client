@@ -8,7 +8,7 @@ import (
 
 // 트랜잭션 해시들로 머클루트 반환
 func BuildMerkleTree(transactionHashes []string) (string, error) {
-	fmt.Printf("Transaction Hashes in BuildMerkleTree: %v\n", transactionHashes)
+	// fmt.Printf("Transaction Hashes in BuildMerkleTree: %v\n", transactionHashes)
 
 	if len(transactionHashes) == 0 {
 		return "", fmt.Errorf("no transactions to build Merkle Tree")
@@ -29,7 +29,7 @@ func BuildMerkleTree(transactionHashes []string) (string, error) {
 
 	// 머클 트리 생성
 	for level := 0; len(hashes) > 1; level++ {
-		fmt.Printf("Level %d: %x\n", level, hashes)
+		// fmt.Printf("Level %d: %x\n", level, hashes)
 
 		// 홀수일 경우 마지막 해시를 복제
 		if len(hashes)%2 != 0 {
@@ -50,6 +50,6 @@ func BuildMerkleTree(transactionHashes []string) (string, error) {
 
 	// 루트 해시 반환
 	merkleRoot := utils.BytesToHex(hashes[0])
-	fmt.Printf("Final Merkle Root: %s\n", merkleRoot)
+	// fmt.Printf("Final Merkle Root: %s\n", merkleRoot)
 	return merkleRoot, nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"simple_p2p_client/blockchain"
 	"simple_p2p_client/bootnode"
+	"simple_p2p_client/constants"
 	"simple_p2p_client/leveldb"
 	"simple_p2p_client/p2p"
 	rpcserver "simple_p2p_client/rpc-server"
@@ -19,33 +20,28 @@ func main() {
 	port := flag.Int("port", 30303, "The port on which the server listen (TCP & UDP)")
 	rpcPort := flag.Int("rpcport", 8080, "The port on which the RPC server listens")
 	nodeID := flag.String("nodeID", "default", "Unique node identifier")
+
 	// 명령줄 인자 파싱 (flag.Parse() 필수)
 	flag.Parse()
 
 	tcpAddress := make(chan string)
 	udpAddress := make(chan string)
-	bootstrapAddress := "localhost:8282"
+	bootstrapAddress := constants.BootstrapNodeAddress
 
 	// nodeID 별 경로 설정
+	// nodeID 별 절대 경로 설정
 	dbPath := fmt.Sprintf("./db/%s", *nodeID)
-	if err := ensureDBDirectory(dbPath); err != nil {
-		fmt.Printf("Failed to prepare DB directory : %v/n", err)
-		os.Exit(1)
-	}
 
-	// Open DB
 	leveldb.SetDBPath(dbPath)
-	_, err := leveldb.GetDBInstance()
-	if err != nil {
-		fmt.Printf("Failed to open DB for node %s: %v\n", *nodeID, err)
+
+	// DB 초기화
+	if err := leveldb.InitDB(); err != nil {
+		fmt.Printf("Failed to initialize DB for node %s: %v\n", *nodeID, err)
 		os.Exit(1)
 	}
-	// DB 정리
 	defer func() {
-		if leveldb.IsDBOpened() {
-			if err := leveldb.CloseDB(); err != nil {
-				fmt.Printf("Failed to close DB: %v\n", err)
-			}
+		if err := leveldb.CleanupDB(); err != nil {
+			fmt.Printf("Failed to cleanup DB: %v\n", err)
 		}
 	}()
 
@@ -53,62 +49,41 @@ func main() {
 		bootnode.StartBootstrapServer()
 
 	} else if *mode == "fullnode" {
-
-		// 노드 계정 초기화
-		if err := blockchain.InitializeNodeAccount(); err != nil {
-			fmt.Printf("노드 계정 초기화 실패 : %v\n", err)
-			os.Exit(1)
-		}
-
-		// Blockchain 초기화
-		if err := blockchain.InitGenesisBlock(); err != nil {
-			fmt.Printf("Failed to initialize blockchain: %v\n", err)
-			os.Exit(1)
-		}
-
-		// Mempool 초기화
-		blockchain.InitMempool()
-
-		// RPC 서버 시작
-		go rpcserver.StartRpcServer(*rpcPort)
-
-		// 1. TCP 서버 실행
-
-		go p2p.StartTCPServer(tcpAddress, *port)
-
-		// 2. UDP 서버 실행
-		go p2p.StartUDPServer(udpAddress, tcpAddress, *port)
-
-		// 3. UDP 서버 주소 받아옴
-		udpServerAddress := <-udpAddress
-
-		// 4. 부트스트랩 노드에 연결하고, 내 UDP 주소 전달
-		nodeAddress, err := p2p.ConnectBootstrapNode(bootstrapAddress, udpServerAddress)
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to connect to bootstrap node: %v", err))
-			return
-		}
-		fmt.Println("[Node Discovery] Peer addresses from bootnode :", nodeAddress)
-
-		go blockchain.StartBlockchainProcessor()
-
-		go blockchain.StartBlockCreator()
-
-		// 5. 부트스트랩 노드로 부터 받은 노드들과 피어 연결 시도
-		p2p.StartClient(nodeAddress)
+		// FullNode 초기화 로직
+		initializeFullNode(*port, *rpcPort, bootstrapAddress, tcpAddress, udpAddress)
 	} else {
 		fmt.Println("Invalid mode. Use -mode=bootstrap or -mode=fullNode")
 	}
 
 }
 
-// DB 디렉토리를 확인하고 없으면 생성
-func ensureDBDirectory(dbPath string) error {
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		err := os.MkdirAll(dbPath, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("failed to create DB directory : %v", err)
-		}
+func initializeFullNode(port, rpcPort int, bootstrapAddress string, tcpAddress, udpAddress chan string) {
+	// 노드 계정 초기화
+	if err := blockchain.InitializeNodeAccount(); err != nil {
+		fmt.Printf("Failed to initialize node account: %v\n", err)
+		os.Exit(1)
 	}
-	return nil
+
+	// Blockchain 초기화
+	if err := blockchain.InitGenesisBlock(); err != nil {
+		fmt.Printf("Failed to initialize blockchain: %v\n", err)
+		os.Exit(1)
+	}
+
+	blockchain.InitMempool()
+	go rpcserver.StartRpcServer(rpcPort)
+	go p2p.StartTCPServer(tcpAddress, port)
+	go p2p.StartUDPServer(udpAddress, tcpAddress, port)
+
+	udpServerAddress := <-udpAddress
+	nodeAddress, err := p2p.ConnectBootstrapNode(bootstrapAddress, udpServerAddress)
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to connect to bootstrap node: %v", err))
+		return
+	}
+
+	fmt.Println("[Node Discovery] Peer addresses from bootnode:", nodeAddress)
+	go blockchain.StartBlockchainProcessor()
+	go blockchain.StartBlockCreator()
+	p2p.StartClient(nodeAddress)
 }

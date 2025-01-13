@@ -42,6 +42,7 @@ func RemoveConn(peers []net.Conn, target net.Conn) []net.Conn {
 	return peers // 값이 없으면 원래 슬라이스 반환
 }
 
+// String => BigInt 타입으로 변경
 func ConvertStringToBigInt(value string) (*big.Int, error) {
 	bigIntValue := new(big.Int)
 

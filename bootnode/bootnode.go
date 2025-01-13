@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// TO BE DEPRECATED : 테스트용으로 TCP 부트스트랩 노드 서버도 생성, 삭제 예정
 // startBootstrapServer : 부트스트랩 노드를 실행하는 함수
 func tcpstartBootstrapServer(address string) {
 	listener, err := net.Listen("tcp", address)

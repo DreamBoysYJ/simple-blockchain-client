@@ -1,6 +1,0 @@
-=============== Dec 5, 2024 (KST) ===============
-15:13:54.076941 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-15:13:54.077413 CURRENT.bak: missing target file: MANIFEST-000000
-=============== Dec 30, 2024 (KST) ===============
-23:48:56.766509 log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed
-23:48:56.768089 CURRENT.bak: missing target file: MANIFEST-000000

@@ -22,6 +22,7 @@ type Account struct {
 	Nonce   uint64
 }
 
+// 주소로 DB에서 Account 객체 반환
 func GetAccount(address string) (*Account, error) {
 	dbInstance, err := leveldb.GetDBInstance()
 	if err != nil {
@@ -47,6 +48,7 @@ func GetAccount(address string) (*Account, error) {
 
 }
 
+// 주소로 DB에 해당 주소가 Init이 되어 있는지 확인
 func AccountExists(address string) (bool, error) {
 	dbInstance, err := leveldb.GetDBInstance()
 	if err != nil {
@@ -70,6 +72,7 @@ func AccountExists(address string) (bool, error) {
 
 }
 
+// 공개키 => 주소 반환
 func PublicKeyToAddress(pubKey []byte) (string, error) {
 	// pubKey는 압축되지 않은 공개키여야 함(len = 65, 첫 바이트 0x04)
 
@@ -90,6 +93,7 @@ func PublicKeyToAddress(pubKey []byte) (string, error) {
 	return fmt.Sprintf("0x%x", address), nil
 }
 
+// 주소로 DB에 Account init 후 저장
 func StoreAccount(address string) (bool, error) {
 	dbInstance, err := leveldb.GetDBInstance()
 	if err != nil {
@@ -117,6 +121,7 @@ func StoreAccount(address string) (bool, error) {
 
 }
 
+// 제네시스 블록 miner를 위한 Account 생성 및 보상금 포함 저장
 func StoreAccountForGenesisMiner(address string, initialBalance *big.Int) (bool, error) {
 	dbInstance, err := leveldb.GetDBInstance()
 	if err != nil {
@@ -144,6 +149,7 @@ func StoreAccountForGenesisMiner(address string, initialBalance *big.Int) (bool,
 
 }
 
+// 랜덤 계정 생성 (개인키, 주소 반환)
 func CreateAccount() (string, string, error) {
 
 	// 1. 개인키 생성
@@ -172,6 +178,7 @@ func CreateAccount() (string, string, error) {
 
 }
 
+// 주소가 유효한 포맷인지 반환
 func IsValidAddress(address string) bool {
 	// 0x 시작 && 총 42자 && 40자 16진수
 	// ^ : 시작
@@ -181,10 +188,12 @@ func IsValidAddress(address string) bool {
 	return re.MatchString(address)
 }
 
+// 공개키 포맷을 바이트배열 변환
 func PublicKeyToBytes(pubKey *secp256k1.PublicKey) []byte {
 	return pubKey.SerializeUncompressed()
 }
 
+// 트랜잭션 내 from의 논스,잔액 확인, to가 DB에 없다면 Init
 func CheckAccountState(from, to, value string, nonce uint64) error {
 	// 1. from 계정이 존재하는지 확인
 	fromExists, err := AccountExists(from)
@@ -229,7 +238,7 @@ func CheckAccountState(from, to, value string, nonce uint64) error {
 
 }
 
-// 개인 키 로드 함수
+// 16진수 string 개인키 => 개인키 포맷 변환 함수
 func LoadPrivateKey(privateKeyHex string) (*ecdsa.PrivateKey, error) {
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {

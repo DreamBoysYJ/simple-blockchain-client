@@ -16,7 +16,7 @@ func TestCreateAccount(t *testing.T) {
 	fmt.Println("주소 ::: ", address)
 
 	if !IsValidAddress(address) {
-		fmt.Println("씨발")
+
 		return
 	}
 	fmt.Println("썽공!!")
