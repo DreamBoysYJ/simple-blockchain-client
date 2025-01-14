@@ -244,7 +244,7 @@ func ExecuteTransactions(transactions []Transaction) error {
 			return fmt.Errorf("failed to execute batch write : %v", err)
 		}
 
-		fmt.Printf("[TX] Execution completed, Hash : %s, From : %s, To: %s, Value : %s", tx.Hash, tx.From, tx.To, tx.Value)
+		fmt.Printf("[TX] Execution completed, Hash : %s, From : %s, To: %s, Value : %s\n", tx.Hash, tx.From, tx.To, tx.Value)
 
 	}
 

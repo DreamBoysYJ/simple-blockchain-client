@@ -24,13 +24,10 @@ func StartRpcServer(port int) {
 	// Register RPC Service
 	server.RegisterService(new(RpcService), "rpc")
 	server.RegisterService(new(BlockAPI), "block")
-	fmt.Println("BlockAPI registered as 'block'")
 
 	server.RegisterService(new(TransactionAPI), "transaction")
-	fmt.Println("TransactionAPI registered as 'transaction'")
 
 	server.RegisterService(new(AccountAPI), "account")
-	fmt.Println("AccountAPI registered as 'account'")
 
 	// Set HTTP Handler
 	http.Handle("/rpc", server)
