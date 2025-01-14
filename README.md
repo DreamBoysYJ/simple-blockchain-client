@@ -52,7 +52,7 @@
 | **Constants**    |   블록 생성 주기, 블록 당 트랜잭션 수 등 설정 값 관리                     |
 | **Utils**    | Keccak256 등 글로벌 유틸 함수                             |
   
-네트워크 프로토콜인 Node Discovery, P2P Protocol는 [Docs/Blockchain.md](#)를 확인해주세요!   
+네트워크 프로토콜인 `Node Discovery`, `P2P`는 [Docs/Blockchain.md](#)를 확인해주세요!   
 
 ---
 
