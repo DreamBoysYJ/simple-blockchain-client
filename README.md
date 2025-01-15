@@ -27,7 +27,7 @@
    다운로드 및 설치: [Go 공식 사이트](https://go.dev/dl/)
 
 2. **Postman API Document**  
-   준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9#8e9b9e8f-e009-4a6e-9e87-fd65f566420a) (cmd or ctl + click)  
+   준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9) (cmd or ctl + click)  
    Postman을 통해 블록체인 노드에 트랜잭션 전송, 블록 조회 등이 가능합니다.
 
 3. **Notion API Document**  
