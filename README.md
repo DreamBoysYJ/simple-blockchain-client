@@ -18,23 +18,6 @@
 
 ---
 
-## 🛠 사용 가이드
-
-### 사전 준비 사항
-아래 도구들을 사전에 설치하고 준비하셔야 합니다!:
-
-1. **Go**  
-   다운로드 및 설치: [Go 공식 사이트](https://go.dev/dl/)
-
-2. **Postman API Document**  
-   준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9) (cmd or ctl + click)  
-   Postman을 통해 블록체인 노드에 트랜잭션 전송, 블록 조회 등이 가능합니다.
-
-3. **Notion API Document**  
-   준비: [Notion API 문서](https://ivory-gerbera-298.notion.site/Simple-Blockchain-client-v1-API-17c57a963d328091b9c1fbdc405345a0) (cmd or ctl + click)  
-   만약 Postman Docs가 무한 로딩이 여러 번 발생할 경우, Notion 페이지를 참고해주세요!
-
----
 ## ⚙️ 패키지 기반 아키텍처, 데이터 플로우
 ![image](https://github.com/user-attachments/assets/3c368d0d-a882-4c3a-a203-50349dedb728)
 
@@ -59,6 +42,37 @@
 네트워크 프로토콜인 `Node Discovery`, `P2P`는 [p2p/README.md](https://github.com/DreamBoysYJ/simple-blockchain-client/tree/main/p2p)를 확인해주세요! (cmd or ctl + click)   
 
 ---
+
+
+## 🛠 사용 가이드
+
+### 사전 준비 사항
+아래 도구들을 사전에 설치하고 준비하셔야 합니다!:
+
+1. **Go**  
+   다운로드 및 설치: [Go 공식 사이트](https://go.dev/dl/)
+
+2. **Postman Desktop Agent**  
+   준비: [Postman Desktop Agent 다운로드](https://www.postman.com/downloads/) (cmd or ctl + click)  
+   Postman을 통해 localhost에 요청을 보내려면 설치를 해야합니다.
+
+3. **Postman API Document**  
+   준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9) (cmd or ctl + click)  
+   Postman을 통해 블록체인 노드에 트랜잭션 전송, 블록 조회 등이 가능합니다.
+
+4. **Notion API Document**  
+   준비: [Notion API 문서](https://ivory-gerbera-298.notion.site/Simple-Blockchain-client-v1-API-17c57a963d328091b9c1fbdc405345a0) (cmd or ctl + click)  
+   만약 Postman Docs가 무한 로딩이 여러 번 발생할 경우, Notion 페이지를 참고해주세요!
+
+5. **방화벽 해제**  
+   준비: Windows 환경에서 프로그램 실행시 방화벽 문제로 실행이 안될 수 있습니다. 사전에 방화벽을 잠시 꺼주세요!  
+
+6. **프로그램 에러시 재시작**  
+   준비: 예상치 못한 에러가 중간에 발생한다면, db 초기화를 위해 프로젝트에서 `db` 폴더를 삭제해주세요.
+   혹은 부트스트랩 노드부터 풀노드 실행까지 순차대로 다시 시작해주세요, 감사합니다.
+   
+---
+
 
 ## 🚀 설치 및 실행
 
