@@ -27,11 +27,11 @@
    다운로드 및 설치: [Go 공식 사이트](https://go.dev/dl/)
 
 2. **Postman API Document**  
-   준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9#8e9b9e8f-e009-4a6e-9e87-fd65f566420a)  
+   준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9#8e9b9e8f-e009-4a6e-9e87-fd65f566420a) (cmd or ctl + click)  
    Postman을 통해 블록체인 노드에 트랜잭션 전송, 블록 조회 등이 가능합니다.
 
 3. **Notion API Document**  
-   준비: [Notion API 문서](https://ivory-gerbera-298.notion.site/Simple-Blockchain-client-v1-API-17c57a963d328091b9c1fbdc405345a0)  
+   준비: [Notion API 문서](https://ivory-gerbera-298.notion.site/Simple-Blockchain-client-v1-API-17c57a963d328091b9c1fbdc405345a0) (cmd or ctl + click)  
    만약 Postman Docs가 무한 로딩이 여러 번 발생할 경우, Notion 페이지를 참고해주세요!
 
 ---
@@ -56,7 +56,7 @@
 | **Constants**    |   블록 생성 주기, 블록 당 트랜잭션 수 등 설정 값 관리                     |
 | **Utils**    | Keccak256 등 글로벌 유틸 함수                             |
   
-네트워크 프로토콜인 `Node Discovery`, `P2P`는 [p2p/README.md](https://github.com/DreamBoysYJ/simple-blockchain-client/tree/main/p2p)를 확인해주세요!   
+네트워크 프로토콜인 `Node Discovery`, `P2P`는 [p2p/README.md](https://github.com/DreamBoysYJ/simple-blockchain-client/tree/main/p2p)를 확인해주세요! (cmd or ctl + click)   
 
 ---
 
