@@ -24,6 +24,7 @@ Node Discovery는 **피어를 연결하기 전** 노드 정보를 검색하고 �
   | `Neighbors`          | `0x04`| 노드 목록을 반환           |
   | `ENRRequest`         | `0x05`| 노드의 TCP 서버 주소 요청|
   | `ENRResponse`        | `0x06`| 노드의 TCP 서버 주소 반환       |
+<img width="1362" alt="node discovery 1" src="https://github.com/user-attachments/assets/9041d258-4c11-438f-ad61-2e45f5a936f8" />
 
 ---
 
@@ -43,6 +44,7 @@ P2P 프로토콜은 **피어와 연결된 후** 채팅, 트랜잭션과 블록 �
   |----------------------|-------|----------------------------|
   | `TransactionMessage` | `0x01`| 트랜잭션 데이터 교환       |
   | `BlockMessage`       | `0x02`| 블록 데이터 교환           |
+<img width="1710" alt="node discovery 2, p2p" src="https://github.com/user-attachments/assets/562a86c6-a8e0-40ee-ad70-9a0a08730af3" />
 
 ---
 
