@@ -30,6 +30,10 @@
    준비: [Postman API 문서](https://documenter.getpostman.com/view/25348775/2sAYQWLZZ9#8e9b9e8f-e009-4a6e-9e87-fd65f566420a)  
    Postman을 통해 블록체인 노드에 트랜잭션 전송, 블록 조회 등이 가능합니다.
 
+3. **Notion API Document**  
+   준비: [Notion API 문서](https://ivory-gerbera-298.notion.site/Simple-Blockchain-client-v1-API-17c57a963d328091b9c1fbdc405345a0)  
+   만약 Postman Docs가 무한 로딩이 여러 번 발생할 경우, Notion 페이지를 참고해주세요!
+
 ---
 ## ⚙️ 패키지 기반 아키텍처, 데이터 플로우
 ![image](https://github.com/user-attachments/assets/3c368d0d-a882-4c3a-a203-50349dedb728)
