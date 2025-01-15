@@ -32,12 +32,12 @@ func StartClient(nodeAddress []string) {
 			nodeUDPAddr, err := net.ResolveUDPAddr("udp", address)
 			if err != nil {
 				utils.PrintError(fmt.Sprintf("Error resolving UDP address : %v", err))
-				return
+				continue
 			}
 			conn, err := net.DialUDP("udp", nil, nodeUDPAddr)
 			if err != nil {
 				utils.PrintError(fmt.Sprintf("Error connecting to node : %v", err))
-				return
+				continue
 			}
 
 			// 1. Send Ping
@@ -46,7 +46,7 @@ func StartClient(nodeAddress []string) {
 			_, err = conn.Write(pingMessage)
 			if err != nil {
 				utils.PrintError(fmt.Sprintf("Error sending Ping message : %v", err))
-				return
+				continue
 			}
 
 			// 2. Waiting Pong
@@ -55,7 +55,7 @@ func StartClient(nodeAddress []string) {
 			n, _, err := conn.ReadFromUDP(buffer)
 			if err != nil {
 				utils.PrintError(fmt.Sprintf("Error receiving Pong message : %v", err))
-				return
+				continue
 			}
 			// 3. Send ENRRequest
 			if buffer[0] == pc.NodeDiscoveryPong {
@@ -66,7 +66,7 @@ func StartClient(nodeAddress []string) {
 				_, err = conn.Write([]byte{pc.NodeDiscoveryENRRequest})
 				if err != nil {
 					utils.PrintError(fmt.Sprintf("Error sending ENRRequest : %v", err))
-					return
+					continue
 				}
 
 				// 4. Waiting ENRResponse
@@ -74,7 +74,7 @@ func StartClient(nodeAddress []string) {
 				n, _, err = conn.ReadFromUDP(buffer)
 				if err != nil {
 					utils.PrintError(fmt.Sprintf("Error receiving ENRResponse : %v", err))
-					return
+					continue
 				}
 
 				if buffer[0] == pc.NodeDiscoveryENRResponse {
