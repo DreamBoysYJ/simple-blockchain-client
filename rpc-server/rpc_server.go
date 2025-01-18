@@ -33,6 +33,8 @@ func StartRpcServer(port int) {
 	http.Handle("/rpc", server)
 
 	// Start Server
+	fmt.Printf("[RPC] Server is listening on : %d\n", port)
+
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
 		fmt.Printf("Error starting RPC Server: %v\n", err)
